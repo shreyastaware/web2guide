@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {research,validInput} from './research.js';
+import {guideSummary} from '../public/guide-model.js';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dataDir=path.resolve(process.env.DATA_DIR||path.join(root,'data'));
@@ -19,7 +20,7 @@ const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; c
 const handler=async(req,res)=>{
  let url;try{url=new URL(req.url,'http://local')}catch{return send(res,400,{error:'Invalid URL'})}
  if(req.method==='GET'&&url.pathname==='/api/health')return send(res,200,{ok:true,guides:seeds.length+generated.length,researchEnabled:!!process.env.OPENAI_API_KEY});
- if(req.method==='GET'&&url.pathname==='/api/guides')return send(res,200,[...seeds,...generated].map(({slug,name,category,website,icon,tone,difficulty,effort,approval,confidence,type,summary,updated,description,aliases,approvalStatus})=>({slug,name,category,website,icon,tone,difficulty,effort,approval,confidence,type,summary,updated,description,aliases,approvalStatus})));
+ if(req.method==='GET'&&url.pathname==='/api/guides')return send(res,200,[...seeds,...generated].map(guideSummary));
  if(req.method==='GET'&&url.pathname.startsWith('/api/guides/')){const slug=decodeURIComponent(url.pathname.slice(12));const g=[...seeds,...generated].find(x=>x.slug===slug);return send(res,g?200:404,g||{error:'Guide not found'});}
  if(req.method==='POST'&&url.pathname==='/api/research'){
   let data;try{data=await collect(req)}catch(e){return send(res,400,{error:e.message})}

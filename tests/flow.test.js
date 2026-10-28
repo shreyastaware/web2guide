@@ -38,7 +38,7 @@ test('end-to-end: unfamiliar app gets researched, persisted, and served at a sha
   const module=await fetch(`http://127.0.0.1:${port}/guide-model.js`);
   assert.equal(module.status,200);assert.match(module.headers.get('content-type'),/javascript/);
   const list=await (await fetch(`http://127.0.0.1:${port}/api/guides`)).json();
-  assert.equal(list.find(g=>g.slug==='slack').approvalStatus,'Conditional');
+  assert.deepEqual(list.find(g=>g.slug==='google').goals.map(goal=>goal.approvalStatus),['Required','Not Required']);assert.equal(list.find(g=>g.slug==='github').timeEstimate,'2.5 hours');
   assert.equal(list.find(g=>g.slug==='github').description.includes('GitHub'),true);
  }finally{child.kill();mock.close();fs.rmSync(dir,{recursive:true,force:true})}
 });

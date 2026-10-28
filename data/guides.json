@@ -74,7 +74,9 @@
             "problem": "Wrong access model",
             "solution": "Use a GitHub App when you need repository-scoped installations, organization approval or independent app actions."
           }
-        ]
+        ],
+        "agentPrompt": "Read my codebase and list every GitHub action and repo my integration needs. Compare a classic OAuth app vs a GitHub App for that list (per docs.github.com) and recommend one, with the minimum scopes or permissions.",
+        "humanPart": "Make the final call on app type."
       },
       {
         "title": "Register the application",
@@ -147,7 +149,9 @@
             "problem": "Organization disallows app",
             "solution": "Ask the organization owner to approve the application; this is workspace-specific, not general GitHub marketplace approval."
           }
-        ]
+        ],
+        "agentPrompt": "Add GitHub OAuth to my server: a /auth/github route that redirects to https://github.com/login/oauth/authorize with a random state, and a /auth/github/callback route that checks state, exchanges the code at https://github.com/login/oauth/access_token, and calls GET https://api.github.com/user. Read GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET from env vars. Add tests for bad state and denied consent.",
+        "humanPart": "Put the client ID and secret in your env, then click through consent once in the browser."
       },
       {
         "title": "Test another user and go live",
@@ -175,7 +179,9 @@
             "problem": "Organization disallows app",
             "solution": "Ask the organization owner to approve the application; this is workspace-specific, not general GitHub marketplace approval."
           }
-        ]
+        ],
+        "agentPrompt": "Write a go-live checklist for my GitHub OAuth flow: the production callback URL, token revoke/disconnect, and error handling. Check my code against it and fix any gaps.",
+        "humanPart": "Connect a second test account, and ask your org owner to approve the app if your org restricts OAuth apps."
       },
       {
         "title": "Set the callback and requested scopes",
@@ -356,7 +362,9 @@
           "Open Basic Information → App Credentials.",
           "Save the client ID and store the client secret securely on your server."
         ],
-        "verify": "The app appears in your development workspace and you have its client credentials."
+        "verify": "The app appears in your development workspace and you have its client credentials.",
+        "agentPrompt": "Draft a Slack app manifest (YAML) for my app with only the bot scopes my features need, explaining each scope in one line. Use the redirect URL from my config.",
+        "humanPart": "Create the app at api.slack.com/apps from the manifest, then copy the client ID and secret into your server env."
       },
       {
         "title": "Implement OAuth installation flow",
@@ -392,7 +400,9 @@
             "problem": "Admin approval prevents installs",
             "solution": "Have the target workspace admin approve the app or request installation through the workspace flow."
           }
-        ]
+        ],
+        "agentPrompt": "Add Slack OAuth to my server: an install route that redirects to https://slack.com/oauth/v2/authorize with client_id, scopes, redirect_uri and a random state, and a callback that checks state, exchanges the code at https://slack.com/api/oauth.v2.access, stores the token per workspace (team.id), and calls auth.test. Read secrets from env vars. Add tests for bad state and denied consent.",
+        "humanPart": "Click Add to Slack in your dev workspace and approve the install."
       },
       {
         "title": "Activate unlisted distribution",
@@ -623,11 +633,23 @@
       "slack",
       "slack.com"
     ],
-    "approvalStatus": "Conditional",
+    "approvalStatus": "Required",
     "approvalSourceIds": [
       "sl1"
     ],
     "goals": [
+      {
+        "id": "pilot",
+        "label": "Connect early customer workspaces (pilot)",
+        "approvalStatus": "Not Required",
+        "approval": "Enable unlisted distribution for a pilot. Workspace admins can restrict installs. Commercial distribution should go through Marketplace approval.",
+        "sourceIds": [
+          "sl1"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": [],
+        "difficulty": "Moderate"
+      },
       {
         "id": "own",
         "label": "Connect my own workspace",
@@ -637,19 +659,8 @@
           "sl1"
         ],
         "reviewWait": "Unknown",
-        "reviewSourceIds": []
-      },
-      {
-        "id": "pilot",
-        "label": "Connect early customer workspaces (pilot)",
-        "approvalStatus": "Conditional",
-        "approval": "Enable unlisted distribution for a pilot. Workspace admins can restrict installs. Commercial distribution should go through Marketplace approval.",
-        "sourceIds": [
-          "sl1"
-        ],
-        "reviewWait": "Unknown",
         "reviewSourceIds": [],
-        "reviewEstimate": "1–5 days"
+        "difficulty": "Moderate"
       },
       {
         "id": "public",
@@ -664,9 +675,12 @@
         "reviewSourceIds": [
           "sl2"
         ],
-        "reviewEstimate": "4–12 wks"
+        "reviewEstimate": "4–12 wks",
+        "approvalReason": "Marketplace review",
+        "difficulty": "Advanced"
       }
-    ]
+    ],
+    "approvalReason": "Marketplace only"
   },
   {
     "slug": "google",
@@ -675,7 +689,7 @@
     "website": "https://cloud.google.com",
     "icon": "G",
     "tone": "#4285f4",
-    "difficulty": "Depends on scopes",
+    "difficulty": "Advanced",
     "effort": "1–4 h initial setup, estimate",
     "approval": "Simple scopes: path depends on brand requirements; sensitive: typically 3–5 business days; restricted: potentially weeks + assessment",
     "confidence": "High",
@@ -756,7 +770,9 @@
           "Choose the narrowest scopes and check their sensitivity labels.",
           "Confirm the audience and whether a verification exception applies."
         ],
-        "verify": "You have a scope inventory with each sensitive or restricted scope identified."
+        "verify": "You have a scope inventory with each sensitive or restricted scope identified.",
+        "agentPrompt": "Read my codebase and list every Google API call it makes. Map each to the narrowest OAuth scope and label it non-sensitive, sensitive, or restricted (per developers.google.com). Flag any scope I could avoid.",
+        "humanPart": "Confirm the scope list and who your users are (internal or external)."
       },
       {
         "title": "Create project, app branding and OAuth client",
@@ -813,7 +829,9 @@
             "problem": "Unverified app warning / user cap",
             "solution": "Inspect requested scopes and Publishing / Verification status; confirm test-user exception vs production obligations."
           }
-        ]
+        ],
+        "agentPrompt": "Add Google OAuth to my server using the official Google auth library: start consent with my scopes, a random state, and access_type=offline; validate the callback; exchange the code; refresh tokens; and make one API call. Read GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from env vars. Add tests for denied consent and token refresh.",
+        "humanPart": "Add yourself as a test user in Google Cloud, set the env vars, and approve consent once."
       },
       {
         "title": "Prepare scope-specific verification packet",
@@ -849,7 +867,9 @@
             "problem": "Restricted scope triggers costly security assessment",
             "solution": "Redesign to narrower scope or avoid sending restricted data through servers when technically possible; confirm applicability with Google."
           }
-        ]
+        ],
+        "agentPrompt": "Draft my Google OAuth verification packet: a one-line justification per sensitive or restricted scope, privacy policy sections covering Google user data, and a shot list for the demo video. Use my scope list and the Google verification docs.",
+        "humanPart": "Verify your domain, record the demo video, and submit in the Verification Center."
       },
       {
         "title": "Submit review and resolve follow-up",
@@ -987,29 +1007,16 @@
       "google.com",
       "cloud.google.com"
     ],
-    "approvalStatus": "Conditional",
+    "approvalStatus": "Required",
     "approvalSourceIds": [
       "go1",
       "go3"
     ],
     "goals": [
       {
-        "id": "test",
-        "label": "Test with my own account or organization",
-        "approvalStatus": "Conditional",
-        "approval": "Personal use, testing, or internal use can qualify for verification exceptions. Check audience and test-user limits before choosing an exception.",
-        "sourceIds": [
-          "go1",
-          "go3"
-        ],
-        "reviewWait": "Unknown",
-        "reviewSourceIds": [],
-        "reviewEstimate": "0–5 days"
-      },
-      {
         "id": "public",
         "label": "Connect external customers or launch publicly",
-        "approvalStatus": "Conditional",
+        "approvalStatus": "Required",
         "approval": "Sensitive or restricted scopes usually need verification unless an exception applies. Non-sensitive scopes can still have branding requirements.",
         "sourceIds": [
           "go1",
@@ -1020,9 +1027,25 @@
           "go1",
           "go3"
         ],
-        "reviewEstimate": "1–6 wks"
+        "reviewEstimate": "1–6 wks",
+        "approvalReason": "Sensitive scopes",
+        "difficulty": "Advanced"
+      },
+      {
+        "id": "test",
+        "label": "Test with my own account or organization",
+        "approvalStatus": "Not Required",
+        "approval": "Personal use, testing, or internal use can qualify for verification exceptions. Check audience and test-user limits before choosing an exception.",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": [],
+        "difficulty": "Moderate"
       }
-    ]
+    ],
+    "approvalReason": "Public launch"
   },
   {
     "slug": "notion",
@@ -1124,7 +1147,9 @@
               "marketplace"
             ]
           }
-        ]
+        ],
+        "agentPrompt": "Explain public vs internal Notion integrations for my use case and recommend an installation scope (Any workspace vs Selected workspaces). Remind me that the scope can't be changed later.",
+        "humanPart": "Pick the installation scope. It's permanent."
       },
       {
         "title": "Create connection and set capabilities",
@@ -1188,7 +1213,9 @@
             "problem": "OAuth callback fails",
             "solution": "Ensure redirect URI and client credentials match configuration. Use server-side authorization code exchange."
           }
-        ]
+        ],
+        "agentPrompt": "Add Notion OAuth to my server: redirect to https://api.notion.com/v1/oauth/authorize with client_id, redirect_uri, owner=user and a random state; on callback check state and exchange the code at https://api.notion.com/v1/oauth/token using HTTP Basic auth; store access and refresh tokens encrypted; support refresh. Read secrets from env vars. Add tests.",
+        "humanPart": "Put the client ID and secret in your env."
       },
       {
         "title": "Test access to granted and ungranted pages",
@@ -1214,7 +1241,9 @@
             "problem": "Not found / no access to a page",
             "solution": "Have the user explicitly share the correct Notion page during installation; the connection has no implicit workspace-wide page access."
           }
-        ]
+        ],
+        "agentPrompt": "Write an integration test for my Notion connection: read a page I shared, confirm an unshared page returns an error, and confirm the token refresh and reconnect paths work. Tell me which page IDs to fill in.",
+        "humanPart": "Authorize a test workspace and pick which pages to share."
       },
       {
         "title": "Optionally apply to Notion Marketplace",
@@ -1326,24 +1355,12 @@
       "notion.so",
       "notion.com"
     ],
-    "approvalStatus": "Conditional",
+    "approvalStatus": "Required",
     "approvalSourceIds": [
       "no1",
       "no3"
     ],
     "goals": [
-      {
-        "id": "own",
-        "label": "Connect my own workspace through OAuth",
-        "approvalStatus": "Not Required",
-        "approval": "A public OAuth connection can work without a Marketplace listing. The user still chooses which pages to share.",
-        "sourceIds": [
-          "no1",
-          "no3"
-        ],
-        "reviewWait": "Unknown",
-        "reviewSourceIds": []
-      },
       {
         "id": "customers",
         "label": "Connect customer workspaces",
@@ -1354,7 +1371,21 @@
           "no3"
         ],
         "reviewWait": "Unknown",
-        "reviewSourceIds": []
+        "reviewSourceIds": [],
+        "difficulty": "Moderate"
+      },
+      {
+        "id": "own",
+        "label": "Connect my own workspace through OAuth",
+        "approvalStatus": "Not Required",
+        "approval": "A public OAuth connection can work without a Marketplace listing. The user still chooses which pages to share.",
+        "sourceIds": [
+          "no1",
+          "no3"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": [],
+        "difficulty": "Easy"
       },
       {
         "id": "marketplace",
@@ -1369,8 +1400,11 @@
         "reviewSourceIds": [
           "no3"
         ],
-        "reviewEstimate": "2–6 wks"
+        "reviewEstimate": "2–6 wks",
+        "approvalReason": "Marketplace review",
+        "difficulty": "Advanced"
       }
-    ]
+    ],
+    "approvalReason": "Marketplace only"
   }
 ]

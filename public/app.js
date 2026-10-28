@@ -1,4 +1,4 @@
-import {STAGES, TIME_BUCKETS, guideModel, selectedPath, completedSteps, waitEstimate, summaryTime, timeBucket, difficultyLabel, approvalLabel, isSafeLink, validateQuery} from './guide-model.js';
+import {STAGES, TIME_BUCKETS, guideModel, selectedPath, completedSteps, waitEstimate, agentPromptText, AGENT_RULES, summaryPath, timeBucket, isSafeLink, validateQuery} from './guide-model.js';
 
 const root = document.querySelector('#root');
 const state = {
@@ -27,9 +27,9 @@ const icon = (name, size = 18) => `<svg aria-hidden="true" width="${size}" heigh
 const link = (url, label, className = '') => isSafeLink(url) ? `<a class="${className}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} ${icon('external', 13)}</a>` : esc(label);
 const safeTone = value => /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(value || '') ? value : '';
 const providerIcon = guide => `<span class="provider-icon" aria-hidden="true" ${safeTone(guide.tone) ? `style="--tone:${guide.tone}"` : ''}>${esc(guide.icon || guide.name?.slice(0, 2) || '?')}</span>`;
-const APPROVAL_LABEL = {'Not Required':'✅ Not needed', Conditional:'🤔 Depends', Required:'🛂 Required', Unknown:'🤷 Unclear'};
-const DIFFICULTY_LABEL = {Easy:'😌 Easy', Moderate:'🤏 Moderate', Advanced:'😤 Advanced', Unknown:'🤷 Unclear'};
-const approvalClass = status => ({Required:'conditional', Conditional:'conditional', 'Not Required':'clear'})[status] || 'unknown';
+const APPROVAL_LABEL = {'Not Required':'✅ Not needed', Required:'📝 Required'};
+const DIFFICULTY_LABEL = {Easy:'🟢 Easy', Moderate:'🟡 Moderate', Advanced:'🔴 Advanced'};
+const approvalClass = status => status === 'Not Required' ? 'clear' : 'conditional';
 function persist(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { state.storageError = true; }
 }
@@ -62,9 +62,7 @@ async function loadGuide(slug) {
     if (request !== guideRequest) return;
     state.guide = guideModel(raw);
     state.goalId = state.preferences[slug] || state.guide.goals[0]?.id || '';
-    const path = selectedPath(state.guide, state.goalId);
-    const done = completedSteps(path.steps, state.progress[slug]);
-    state.openStep = path.steps.find(step => !done.includes(step))?.key || path.steps[0]?.key || '';
+    state.openStep = ''; // Start collapsed so every step is visible at a glance.
   } catch { if (request !== guideRequest) return; state.guide = 'error'; }
   render();
 }
@@ -118,18 +116,20 @@ function libraryResults() {
   const {time, difficulty, approval} = state.filters;
   const filtering = state.search || time || difficulty || approval;
   const guides = state.guides.filter(guide => `${guide.name} ${guide.summary} ${guide.description || ''}`.toLowerCase().includes(state.search.trim().toLowerCase())
-    && (!time || timeBucket(summaryTime(guide)) === time) && (!difficulty || difficultyLabel(guide.difficulty) === difficulty) && (!approval || approvalLabel(guide) === approval)).sort((a,b) => String(b.updated || '').localeCompare(String(a.updated || '')) || a.name.localeCompare(b.name));
+    && (!time || timeBucket(rowPath(guide).timeEstimate) === time) && (!difficulty || rowPath(guide).difficulty === difficulty) && (!approval || rowPath(guide).approvalStatus === approval)).sort((a,b) => String(b.updated || '').localeCompare(String(a.updated || '')) || a.name.localeCompare(b.name));
   if (!guides.length) return `<div class="list-state">${icon(filtering ? 'search' : 'book',28)}<h2>${filtering ? 'Nothing matches 👀' : 'No guides yet 👀'}</h2><p>${filtering ? 'Loosen the filters or generate a fresh one.' : 'Drop an app name and get your first guide.'}</p>${filtering ? '<button class="button secondary" data-action="clear-search">Clear filters</button>' : ''}<a class="button ${filtering ? 'text-button' : 'primary'}" href="/" data-route="/">Generate a guide ${icon('arrow',16)}</a></div>`;
-  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APP</span><span>SETUP</span><span>COMPLEXITY</span><span>APPROVAL</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-time"><span class="mobile-label">Setup</span>${esc(summaryTime(guide))}</div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${DIFFICULTY_LABEL[difficultyLabel(guide.difficulty)]}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalClass(approvalLabel(guide))}">${APPROVAL_LABEL[approvalLabel(guide)]}</span></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${filtering ? ' match' : ''}</p>`;
+  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APP</span><span>SETUP</span><span>COMPLEXITY</span><span>APPROVAL</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-time"><span class="mobile-label">Setup</span>${esc(rowPath(guide).timeEstimate)}</div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${DIFFICULTY_LABEL[rowPath(guide).difficulty]}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalClass(rowPath(guide).approvalStatus)}">${APPROVAL_LABEL[rowPath(guide).approvalStatus]}</span></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${filtering ? ' match' : ''}</p>`;
 }
+// A row shows the same path the guide opens on, including the use case this viewer picked.
+const rowPath = guide => summaryPath(guide, state.preferences[guide.slug]);
 function filterSelect(name, label, anyLabel, options) {
   return `<label class="filter ${state.filters[name] ? 'active' : ''}"><span class="sr-only">${label}</span><select id="filter-${name}" data-filter="${name}"><option value="">${anyLabel}</option>${options.map(([value,text]) => `<option value="${esc(value)}" ${state.filters[name] === value ? 'selected' : ''}>${esc(text)}</option>`).join('')}</select></label>`;
 }
 function libraryPage() {
-  return `<section class="library-content"><div class="page-heading"><h1 tabindex="-1">Your guides 📚</h1><p class="page-description">Find your app. Pick up where you left off.</p></div><div class="library-toolbar"><label class="search-field" for="guide-search">${icon('search')}<input type="search" id="guide-search" placeholder="Search apps…" value="${esc(state.search)}" autocomplete="off"><span class="sr-only">Search guides</span></label>${filterSelect('time','Setup time','⏱ Any setup time',TIME_BUCKETS.map(bucket => [bucket.id,bucket.label]))}${filterSelect('difficulty','Complexity','🧠 Any complexity',Object.entries(DIFFICULTY_LABEL))}${filterSelect('approval','Approval','🛂 Any approval',Object.entries(APPROVAL_LABEL))}</div><div id="library-results">${libraryResults()}</div></section>`;
+  return `<section class="library-content"><div class="page-heading"><h1 tabindex="-1">Your guides 📚</h1><p class="page-description">Find your app. Pick up where you left off.</p></div><div class="library-toolbar"><label class="search-field" for="guide-search">${icon('search')}<input type="search" id="guide-search" placeholder="Search apps…" value="${esc(state.search)}" autocomplete="off"><span class="sr-only">Search guides</span></label>${filterSelect('time','Setup time','⏱ Any setup time',TIME_BUCKETS.map(bucket => [bucket.id,bucket.label]))}${filterSelect('difficulty','Complexity','📊 Any complexity',Object.entries(DIFFICULTY_LABEL))}${filterSelect('approval','Approval','📝 Any approval',Object.entries(APPROVAL_LABEL))}</div><div id="library-results">${libraryResults()}</div></section>`;
 }
 const OWNER_LABEL = {You:'🙋 You', Agent:'🤖 Agent', 'Agent + you':'🤝 Agent + you'};
-const shortWhere = label => String(label || '').split('→').pop().trim() || 'dashboard';
+const shortWhere = label => /^your /i.test(label || '') ? 'docs' : String(label || '').split('→').pop().trim() || 'dashboard';
 function stepCard(step, number, guide, done) {
   const isDone = done.includes(step);
   const open = state.openStep === step.key;
@@ -140,6 +140,8 @@ function stepCard(step, number, guide, done) {
     <div class="step-body" id="detail-${key}" role="region" aria-labelledby="toggle-${key}" ${open ? '' : 'hidden'}>
       <ul class="actions">${step.instructions.map(action => `<li>${esc(action)}</li>`).join('')}</ul>
       ${step.values.map((value,index) => `<div class="config-value"><div><span>${esc(value.label || 'Value')}</span><code>${esc(value.value)}</code></div><button class="icon-button" data-copy-value="${index}" data-copy-step="${step.index}" aria-label="Copy ${esc(value.label || 'value')}">${icon('copy',16)}</button></div>`).join('')}
+      ${step.agentPrompt ? `<div class="agent-box"><div class="agent-head"><strong>🤖 Hand this to your agent</strong><button class="text-button" data-copy-prompt="${step.index}">${icon('copy',14)} Copy prompt</button></div><p>${esc(step.agentPrompt)}</p><small>Paste into Claude Code, Cursor, Codex, or any coding agent.</small></div>` : ''}
+      ${step.humanPart ? `<p class="your-part">🙋 <strong>Your part:</strong> ${esc(step.humanPart)}</p>` : ''}
       ${step.warning ? `<p class="heads-up">⚠️ <strong>Heads up:</strong> ${esc(step.warning)}</p>` : ''}
       <p class="done-when">✅ <strong>Done when:</strong> ${esc(step.verify)}</p>
       ${step.blockers.length ? `<details class="stuck" id="blockers-${key}"><summary>😵 Stuck?</summary><ul>${step.blockers.map(blocker => `<li><strong>${esc(blocker.problem)}</strong> → ${esc(blocker.solution)}</li>`).join('')}</ul></details>` : ''}
@@ -155,15 +157,14 @@ function guidePage(guide) {
   const percent = path.steps.length ? Math.round(done.length / path.steps.length * 100) : 0;
   const wait = waitEstimate(guide, path);
   const needs = guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).slice(0,3);
-  const approval = APPROVAL_LABEL[path.approvalStatus] || APPROVAL_LABEL.Unknown;
   return `<div class="guide-content">
-    <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button></div></div>
+    <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-agent">🤖 Copy for agent</button><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button></div></div>
     <header class="guide-heading"><div class="guide-title">${providerIcon(guide)}<h1 tabindex="-1">${esc(guide.name)}</h1></div><p class="guide-description">${esc(guide.description)}</p></header>
     ${guide.goals.length > 1 ? `<div class="goal-question"><label for="guide-goal">🎯 I want to</label><select id="guide-goal">${guide.goals.map(goal => `<option value="${esc(goal.id)}" ${goal.id === path.goal?.id ? 'selected' : ''}>${esc(goal.label)}</option>`).join('')}</select></div>` : ''}
     <dl class="stats">
-      <div><dt>⏱ Setup time</dt><dd>${esc(guide.timeEstimate)}</dd><span>est. hands-on</span></div>
-      <div><dt>🛂 Approval</dt><dd class="approval-${approvalClass(path.approvalStatus)}">${approval}</dd><span>${wait ? `${esc(wait)} wait (est.)` : 'zero waiting, no cap'}</span></div>
-      <div><dt>🧠 Difficulty</dt><dd>${esc(guide.difficulty === 'Unknown' && guide.difficultyNote ? `🤔 ${guide.difficultyNote}` : DIFFICULTY_LABEL[guide.difficulty])}</dd></div>
+      <div><dt>⏱ Setup time</dt><dd>${esc(path.timeEstimate)}</dd><span>est. hands-on</span></div>
+      <div><dt>📝 Approval</dt><dd class="approval-${approvalClass(path.approvalStatus)}">${APPROVAL_LABEL[path.approvalStatus]}</dd><span>${wait ? `${esc(path.approvalReason)} · ${esc(wait)} wait (est.)` : 'zero waiting, no cap'}</span></div>
+      <div><dt>📊 Difficulty</dt><dd>${DIFFICULTY_LABEL[path.difficulty]}</dd></div>
     </dl>
     ${needs.length ? `<div class="needs"><strong>🎒 You’ll need</strong><ul>${needs.map(item => `<li>${esc(item.title)}</li>`).join('')}</ul></div>` : ''}
     <section class="steps" aria-labelledby="steps-heading">
@@ -222,15 +223,15 @@ function markStep(key, checked) {
 function markdown(guide) {
   const path = selectedPath(guide,state.goalId);
   return [`# ${guide.name} OAuth Setup Guide`, `Generated with Web2Guide · Updated ${guide.updated || 'Unknown'}${guide.type ? ` · ${guide.type}` : ''}`, '', guide.description,
-    `\n## Quick overview\n- Setup time: ${guide.timeEstimate} (est.)\n- Difficulty: ${guide.difficulty}\n- Provider approval: ${path.approvalStatus}\n- Review wait: ${waitEstimate(guide,path) ? `${waitEstimate(guide,path)} (est.)` : 'None'}\n\n${path.approval}`,
+    `\n## Quick overview\n- Setup time: ${path.timeEstimate} (est.)\n- Difficulty: ${path.difficulty}\n- Provider approval: ${path.approvalStatus}\n- Review wait: ${waitEstimate(guide,path) ? `${waitEstimate(guide,path)} (est.)` : 'None'}\n\n${path.approval}`,
     path.goal ? `\nSelected use: ${path.goal.label}` : '',
     guide.agentCan.length ? `\n## An agent can\n${guide.agentCan.map(item => `- ${item}`).join('\n')}` : '', guide.humanMust.length ? `\n## You need to\n${guide.humanMust.map(item => `- ${item}`).join('\n')}` : '', '\n## Prerequisites', ...guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(item => `- **${item.title}** — ${item.detail}`),
-    ...STAGES.flatMap(stage => { const steps=path.steps.filter(step => step.stage === stage); return !steps.length ? [] : [`\n## ${stage}`, ...steps.map(step => [`\n### ${step.title}`, step.owner || step.time ? `_${[step.owner, step.time].filter(Boolean).join(' · ')}_` : '', `Where: ${step.where.label}${step.where.url ? ` (${step.where.url})` : ''}`, ...step.instructions.map((action,index) => `${index+1}. ${action}`), ...step.values.map(value => `\n${value.label}:\n\`\`\`\n${value.value}\n\`\`\``), `\nVerify: ${step.verify}`, step.warning ? `\nNote: ${step.warning}` : '', ...step.blockers.map(blocker => `- ${blocker.problem}: ${blocker.solution}`), ...step.sourceIds.map(id => {const source=guide.sources.find(source=>source.id===id); return source ? `Source: ${source.title} — ${source.url}` : '';})].join('\n'))]; }),
+    ...STAGES.flatMap(stage => { const steps=path.steps.filter(step => step.stage === stage); return !steps.length ? [] : [`\n## ${stage}`, ...steps.map(step => [`\n### ${step.title}`, step.owner || step.time ? `_${[step.owner, step.time].filter(Boolean).join(' · ')}_` : '', `Where: ${step.where.label}${step.where.url ? ` (${step.where.url})` : ''}`, ...step.instructions.map((action,index) => `${index+1}. ${action}`), ...step.values.map(value => `\n${value.label}:\n\`\`\`\n${value.value}\n\`\`\``), step.agentPrompt ? `\nAgent prompt: ${step.agentPrompt}` : '', step.humanPart ? `Your part: ${step.humanPart}` : '', `\nVerify: ${step.verify}`, step.warning ? `\nNote: ${step.warning}` : '', ...step.blockers.map(blocker => `- ${blocker.problem}: ${blocker.solution}`), ...step.sourceIds.map(id => {const source=guide.sources.find(source=>source.id===id); return source ? `Source: ${source.title} — ${source.url}` : '';})].join('\n'))]; }),
     '\n## Troubleshooting', ...guide.blockers.map(blocker=>`- **${blocker.problem}** — ${blocker.solution}`), '\n## Open questions', ...guide.unknowns.map(item=>`- ${item}`), '\n## Official references', ...guide.sources.map(source=>`- ${source.title}: ${source.url} (${source.status})`), '\nChecklist completion does not confirm distribution eligibility or provider approval.'
   ].join('\n');
 }
 root.addEventListener('click', async event => {
-  const element = event.target.closest('[data-route],[data-action],[data-open-step],[data-complete],[data-copy-value]');
+  const element = event.target.closest('[data-route],[data-action],[data-open-step],[data-complete],[data-copy-value],[data-copy-prompt]');
   if (!element) return;
   if (element.dataset.route) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;
@@ -248,6 +249,7 @@ root.addEventListener('click', async event => {
     if (next) document.querySelector(`#toggle-step-${next.index}`)?.focus(); else toast('All done 🎉 double-check approval in the provider dashboard');
     return;
   }
+  if (element.dataset.copyPrompt !== undefined) { const step = state.guide.steps.find(step => step.index === Number(element.dataset.copyPrompt)); if (step) await copyText(agentPromptText(state.guide, step)); return; }
   if (element.dataset.copyValue !== undefined) { const value = state.guide.steps.find(step=>step.index===Number(element.dataset.copyStep))?.values[Number(element.dataset.copyValue)]; if(value) await copyText(value.value); return; }
   switch(element.dataset.action) {
     case 'sidebar-open': state.sidebar = true; render(); document.querySelector('.mobile-close')?.focus(); break;
@@ -256,6 +258,7 @@ root.addEventListener('click', async event => {
     case 'retry-guide': loadGuide(state.slug); break;
     case 'clear-search': state.search = ''; state.filters = {time: '', difficulty: '', approval: ''}; render(); document.querySelector('#guide-search')?.focus(); break;
     case 'copy-link': await copyText(location.href); break;
+    case 'copy-agent': await copyText(`You're my coding agent. Below is my ${state.guide.name} OAuth setup guide. Do every step marked Agent or Agent + you, in order. For steps marked You, stop and tell me what to do, then wait for me. ${AGENT_RULES}\n\n${markdown(state.guide)}`); break;
     case 'export': {
       const url = URL.createObjectURL(new Blob([markdown(state.guide)],{type:'text/markdown;charset=utf-8'}));
       const anchor = document.createElement('a'); anchor.href=url; anchor.download=state.guide.slug+'-oauth-guide.md'; anchor.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); break;
@@ -273,9 +276,7 @@ root.addEventListener('change', event => {
     state.goalId = event.target.value;
     state.preferences[state.guide.slug] = state.goalId;
     persist('web2guide_goals',state.preferences);
-    const path = selectedPath(state.guide,state.goalId);
-    const done = completedSteps(path.steps,state.progress[state.guide.slug]);
-    state.openStep = path.steps.find(step => !done.includes(step))?.key || path.steps[0]?.key || '';
+    state.openStep = '';
     render();
   }
 });
