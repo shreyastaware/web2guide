@@ -13,6 +13,26 @@ export function difficultyLabel(value) {
 export function approvalLabel(guide) {
   return APPROVAL_STATUSES.includes(guide.approvalStatus) ? guide.approvalStatus : 'Unknown';
 }
+// Engineering estimates are shown only when they read as a short duration, never as documented times.
+export function shortDuration(value) {
+  const text = String(value || '').replace(/[,;]?\s*estimate[ds]?$/i, '').trim();
+  return text.length <= 40 && /\d|minute|hour|day|week/i.test(text) && !/^unknown/i.test(text) ? text : '';
+}
+const OWNERS = {Human: 'You', Agent: 'Agent', 'Human + agent': 'Agent + you'};
+// Every guide shows a time. Documented durations win; otherwise these typical ranges fill the gap and are labeled estimates.
+const STAGE_TIME = {Prepare: '10–20 min', Create: '10–20 min', Configure: '15–30 min', Test: '30–60 min', Launch: '30–60 min'};
+const DIFFICULTY_TIME = {Easy: '30–60 min', Moderate: '1–3 h', Advanced: '3–6 h', Unknown: '1–4 h'};
+const WAIT_TIME = {Required: '2–6 wks', Conditional: '0–2 wks', Unknown: '1–4 wks'};
+const leadingRange = value => value.match(/^[\d.]+(?:\s*[–-]\s*[\d.]+)?\s*(?:min|minutes?|h|hours?|days?|business days|wks?|weeks?)\b/i)?.[0] || value;
+// Library summaries carry no sources, so they use the same estimate a guide shows when no setup time is documented.
+export const summaryTime = raw => leadingRange(shortDuration(raw.effort)) || DIFFICULTY_TIME[difficultyLabel(raw.difficulty)];
+export const TIME_BUCKETS = [{id: 'quick', label: '⚡ Under 1 h'}, {id: 'hours', label: '🕐 1–3 h'}, {id: 'long', label: '🐢 3 h+'}];
+export function timeBucket(range) {
+  const numbers = (String(range).match(/[\d.]+/g) || []).map(Number).slice(0, 2);
+  if (!numbers.length) return 'hours';
+  const hours = (numbers.reduce((sum, value) => sum + value, 0) / numbers.length) * (/min/i.test(range) ? 1 / 60 : /day/i.test(range) ? 8 : /wk|week/i.test(range) ? 40 : 1);
+  return hours <= 1 ? 'quick' : hours <= 3 ? 'hours' : 'long';
+}
 function inferStage(step) {
   if (STAGES.includes(step.stage)) return step.stage;
   const title = String(step.title || '').toLowerCase();
@@ -37,6 +57,7 @@ export function guideModel(raw) {
     sourceIds: cited(step.sourceIds),
     where: {label: step.where?.label || 'Provider documentation', url: isSafeLink(step.where?.url) ? step.where.url : ''},
     verify: step.verify || 'This saved guide does not specify a success check. Confirm the result in the linked provider documentation.',
+    owner: OWNERS[step.owner] || 'You', time: shortDuration(step.time) || STAGE_TIME[inferStage(step)],
   }));
   const goals = list(raw.goals).filter(goal => goal && typeof goal.id === 'string' && goal.label).map(goal => ({
     ...goal,
@@ -49,6 +70,10 @@ export function guideModel(raw) {
     description: raw.description || String(raw.summary || '').split(/(?<=[.!?])\s/)[0] || 'Set up an OAuth connection for this application.',
     requirements: list(raw.requirements).filter(Boolean), blockers: list(raw.blockers).filter(Boolean),
     branches: list(raw.branches).filter(Boolean), unknowns: list(raw.unknowns),
+    agentCan: list(raw.agentCan).filter(text => typeof text === 'string' && text.trim()),
+    humanMust: list(raw.humanMust).filter(text => typeof text === 'string' && text.trim()),
+    effortEstimate: leadingRange(shortDuration(raw.effort)),
+    timeEstimate: (cited(raw.setupTimeSourceIds).length && shortDuration(raw.setupTime)) || leadingRange(shortDuration(raw.effort)) || DIFFICULTY_TIME[difficultyLabel(raw.difficulty)],
     difficulty: difficultyLabel(raw.difficulty),
     difficultyNote: difficultyLabel(raw.difficulty) === 'Unknown' ? raw.difficulty || 'Not documented' : '',
     approvalStatus: cited(raw.approvalSourceIds).length ? approvalLabel(raw) : 'Unknown',
@@ -68,6 +93,10 @@ export function selectedPath(guide, goalId) {
     sourceIds: goal?.sourceIds || guide.approvalSourceIds,
     reviewSourceIds: goal?.reviewSourceIds || guide.reviewSourceIds,
   };
+}
+export function waitEstimate(guide, path) {
+  if (path.approvalStatus === 'Not Required') return '';
+  return shortDuration(path.goal?.reviewEstimate || guide.reviewEstimate) || leadingRange(shortDuration(path.reviewWait)) || WAIT_TIME[path.approvalStatus] || WAIT_TIME.Unknown;
 }
 export function completedSteps(steps, saved) {
   return steps.filter(step => list(saved).some(key => String(key) === step.key));

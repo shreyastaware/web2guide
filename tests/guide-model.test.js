@@ -11,6 +11,18 @@ test('old saved guides render without fabricated approval, durations, or verific
   assert.equal(old.steps[0].stage,'Create');assert.deepEqual(old.steps[0].instructions,['Enter the app name.']);
   assert.match(old.steps[0].verify,/does not specify/);
   assert.equal(completedSteps(old.steps,[0]).length,1);
+  assert.equal(old.effortEstimate,'2 hours');assert.equal(old.timeEstimate,'2 hours');assert.equal(old.steps[0].owner,'You');assert.equal(old.steps[0].time,'10–20 min');assert.deepEqual(old.agentCan,[]);
+});
+
+test('effort estimates, step owners, and agent handoff are exposed without inventing review waits',()=>{
+  for(const raw of guides){
+    const guide=guideModel(raw);
+    assert.ok(guide.effortEstimate,raw.slug);assert.ok(guide.agentCan.length);assert.ok(guide.humanMust.length);
+    assert.ok(guide.steps.every(step=>['You','Agent','Agent + you'].includes(step.owner)));
+    assert.equal(guide.reviewWait,'Unknown');
+  }
+  const long=guideModel({name:'Long',effort:'Register an app, choose scopes, implement the flow, then test it on production endpoints.',steps:[{title:'Wait',time:'Unknown',owner:'Robot'}]});
+  assert.equal(long.effortEstimate,'');assert.equal(long.timeEstimate,'1–4 h');assert.equal(long.steps[0].time,'10–20 min');assert.equal(long.steps[0].owner,'You');
 });
 
 test('curated guides provide complete structured actions in stage order',()=>{

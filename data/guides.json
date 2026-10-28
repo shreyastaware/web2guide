@@ -648,7 +648,8 @@
           "sl1"
         ],
         "reviewWait": "Unknown",
-        "reviewSourceIds": []
+        "reviewSourceIds": [],
+        "reviewEstimate": "1–5 days"
       },
       {
         "id": "public",
@@ -662,7 +663,8 @@
         "reviewWait": "Preliminary feedback: up to 10 business days. Functional review: up to 10 weeks for new submissions. Check the submission dashboard for the current estimate.",
         "reviewSourceIds": [
           "sl2"
-        ]
+        ],
+        "reviewEstimate": "4–12 wks"
       }
     ]
   },
@@ -1001,7 +1003,8 @@
           "go3"
         ],
         "reviewWait": "Unknown",
-        "reviewSourceIds": []
+        "reviewSourceIds": [],
+        "reviewEstimate": "0–5 days"
       },
       {
         "id": "public",
@@ -1016,7 +1019,8 @@
         "reviewSourceIds": [
           "go1",
           "go3"
-        ]
+        ],
+        "reviewEstimate": "1–6 wks"
       }
     ]
   },
@@ -1364,7 +1368,8 @@
         "reviewWait": "Initial email response: 5–10 business days. This is not a guarantee of final approval.",
         "reviewSourceIds": [
           "no3"
-        ]
+        ],
+        "reviewEstimate": "2–6 wks"
       }
     ]
   }

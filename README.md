@@ -31,7 +31,9 @@ The key is never requested or exposed in the browser. Without it, saved guides r
 - Mark actions complete. Progress and use-case choices are saved on this browser; they do not verify provider-side configuration, distribution, or approval.
 - Open troubleshooting and references when needed. Copy the shareable URL or export the selected path as Markdown.
 
-Hands-on time and external review wait are separate. A duration without a supporting source is shown as **Unknown**. Existing engineering estimates are preserved in the original data and are not promoted to documented setup times. Unknown approval requirements remain unknown.
+Hands-on time and external review wait are separate. A documented setup time is shown when a source supports it; otherwise the engineering effort estimate is shown and labeled **Estimate, not from provider docs**. Review waits are never estimated: without a source they are **Unknown**. Unknown approval requirements remain unknown.
+
+Each guide shows what an agent can do and where you need to take over, and every step is marked **You**, **Agent**, or **Agent + you** with its estimated time. The header states whether a guide was curated from official docs or produced by agent research.
 
 ## Routes and storage
 

@@ -1,4 +1,4 @@
-import {STAGES, guideModel, selectedPath, completedSteps, difficultyLabel, approvalLabel, isSafeLink, validateQuery} from './guide-model.js';
+import {STAGES, guideModel, selectedPath, completedSteps, waitEstimate, difficultyLabel, approvalLabel, isSafeLink, validateQuery} from './guide-model.js';
 
 const root = document.querySelector('#root');
 const state = {
@@ -25,7 +25,9 @@ const icons = {
 };
 const icon = (name, size = 18) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.info}</svg>`;
 const link = (url, label, className = '') => isSafeLink(url) ? `<a class="${className}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} ${icon('external', 13)}</a>` : esc(label);
-const providerIcon = guide => `<span class="provider-icon" aria-hidden="true">${esc(guide.icon || guide.name?.slice(0, 2) || '?')}</span>`;
+const safeTone = value => /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(value || '') ? value : '';
+const providerIcon = guide => `<span class="provider-icon" aria-hidden="true" ${safeTone(guide.tone) ? `style="--tone:${guide.tone}"` : ''}>${esc(guide.icon || guide.name?.slice(0, 2) || '?')}</span>`;
+const approvalClass = status => ({Required:'conditional', Conditional:'conditional', 'Not Required':'clear'})[status] || 'unknown';
 const formatDate = value => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date unknown';
   const date = new Date(value + 'T00:00:00');
@@ -122,61 +124,64 @@ function libraryResults() {
   if (state.listStatus === 'error') return `<div class="list-state"><h2>We couldn’t load the guides</h2><p>Check your connection and try again.</p><button class="button secondary" data-action="retry-list">Try again</button></div>`;
   const guides = state.guides.filter(guide => `${guide.name} ${guide.summary} ${guide.description || ''}`.toLowerCase().includes(state.search.trim().toLowerCase())).sort((a,b) => String(b.updated || '').localeCompare(String(a.updated || '')) || a.name.localeCompare(b.name));
   if (!guides.length) return `<div class="list-state">${icon(state.search ? 'search' : 'book',28)}<h2>${state.search ? 'No matching guides' : 'Your first guide starts here'}</h2><p>${state.search ? 'Try another app name, or generate a guide for it.' : 'Enter an app name to create a reusable OAuth setup checklist.'}</p>${state.search ? '<button class="button secondary" data-action="clear-search">Clear search</button>' : ''}<a class="button ${state.search ? 'text-button' : 'primary'}" href="/" data-route="/">Generate a guide ${icon('arrow',16)}</a></div>`;
-  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APPLICATION</span><span>COMPLEXITY</span><span>APPROVAL</span><span>UPDATED</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${esc(difficultyLabel(guide.difficulty))}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalLabel(guide) === 'Required' || approvalLabel(guide) === 'Conditional' ? 'conditional' : ''}">${esc(approvalLabel(guide))}</span></div><div class="row-date"><span class="mobile-label">Updated</span><time datetime="${esc(guide.updated || '')}">${formatDate(guide.updated)}</time></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${state.search ? ' found' : ' available'}</p>`;
+  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APPLICATION</span><span>COMPLEXITY</span><span>APPROVAL</span><span>UPDATED</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${esc(difficultyLabel(guide.difficulty))}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalClass(approvalLabel(guide))}">${esc(approvalLabel(guide))}</span></div><div class="row-date"><span class="mobile-label">Updated</span><time datetime="${esc(guide.updated || '')}">${formatDate(guide.updated)}</time></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${state.search ? ' found' : ' available'}</p>`;
 }
 function libraryPage() {
   return `<section class="library-content"><div class="page-heading"><div class="eyebrow">YOUR OAUTH PLAYBOOKS</div><h1 tabindex="-1">Checkout Generated Guides</h1><p class="page-description">Find your app. Pick up where you left off.</p></div><div class="library-toolbar"><label class="search-field" for="guide-search">${icon('search')}<input type="search" id="guide-search" placeholder="Search guides by app name…" value="${esc(state.search)}" autocomplete="off"><span class="sr-only">Search generated guides</span></label></div><div id="library-results">${libraryResults()}</div></section>`;
 }
-function stepCard(step, number, guide, path, done) {
+const OWNER_LABEL = {You:'🙋 You', Agent:'🤖 Agent', 'Agent + you':'🤝 Agent + you'};
+const DIFFICULTY_LABEL = {Easy:'Easy 😌', Moderate:'Moderate 🤏', Advanced:'Advanced 😤'};
+const shortWhere = label => String(label || '').split('→').pop().trim() || 'dashboard';
+function stepCard(step, number, guide, done) {
   const isDone = done.includes(step);
   const open = state.openStep === step.key;
   const key = `step-${step.index}`;
-  const primarySource = guide.sources.find(source => step.sourceIds.includes(source.id));
-  const whereUrl = step.where.url || primarySource?.url;
-  return `<article class="step-card ${isDone ? 'is-complete' : ''} ${open ? 'is-open' : ''}" id="${key}">
-    <div class="step-summary"><input type="checkbox" class="step-checkbox" id="check-${key}" data-check="${esc(step.key)}" ${isDone ? 'checked' : ''} aria-label="Mark ${esc(step.title)} ${isDone ? 'incomplete' : 'complete'}"><h3><button class="step-toggle" id="toggle-${key}" data-open-step="${esc(step.key)}" aria-expanded="${open}" aria-controls="detail-${key}"><span><span class="step-number">${String(number).padStart(2,'0')}</span>${esc(step.title)}</span>${icon(open ? 'down' : 'chevron',17)}</button></h3></div>
-    <div class="step-detail" id="detail-${key}" role="region" aria-labelledby="toggle-${key}" ${open ? '' : 'hidden'}>
-      <div class="instruction-group"><h4>Where to go</h4><p>${link(whereUrl, step.where.label)}</p></div>
-      <div class="instruction-group"><h4>What to do</h4><ol>${step.instructions.map(action => `<li>${esc(action)}</li>`).join('')}</ol></div>
-      ${step.warning ? `<div class="inline-warning">${icon('info',16)}<p>${esc(step.warning)}</p></div>` : ''}
-      ${step.values.length ? `<div class="instruction-group"><h4>What to enter</h4>${step.values.map((value,index) => `<div class="config-value"><div><span>${esc(value.label || 'Configuration value')}</span><code>${esc(value.value)}</code>${value.hint ? `<small>${esc(value.hint)}</small>` : ''}</div><button class="icon-button" data-copy-value="${index}" data-copy-step="${step.index}" aria-label="Copy ${esc(value.label || 'value')}">${icon('copy',16)}</button></div>`).join('')}</div>` : ''}
-      <div class="verify-block"><span class="verify-label">${icon('check',16)} How to verify</span><p>${esc(step.verify)}</p></div>
-      ${step.blockers.length ? `<details class="step-blockers" id="blockers-${key}"><summary>Common blockers ${icon('down',14)}</summary>${step.blockers.map(blocker => `<div class="blocker"><strong>${esc(blocker.problem)}</strong><p>${esc(blocker.solution)}</p></div>`).join('')}</details>` : ''}
-      ${sourceLinks(step.sourceIds,guide.sources,'Official documentation') || '<p class="muted source-gap">No verified source attached. Confirm these instructions with the provider.</p>'}
-      <div class="step-actions"><button class="button ${isDone ? 'secondary' : 'primary'}" data-complete="${esc(step.key)}">${isDone ? 'Continue to next step' : 'Mark complete & continue'} ${icon('arrow',15)}</button></div>
+  const whereUrl = step.where.url || guide.sources.find(source => step.sourceIds.includes(source.id))?.url;
+  return `<li class="step ${isDone ? 'is-complete' : ''} ${open ? 'is-open' : ''}" id="${key}">
+    <div class="step-row"><input type="checkbox" class="step-checkbox" data-n="${number}" data-check="${esc(step.key)}" ${isDone ? 'checked' : ''} aria-label="Mark ${esc(step.title)} ${isDone ? 'not done' : 'done'}"><h3><button class="step-toggle" id="toggle-${key}" data-open-step="${esc(step.key)}" aria-expanded="${open}" aria-controls="detail-${key}"><span>${esc(step.title)}</span><small class="step-meta">${esc(OWNER_LABEL[step.owner] || step.owner)} · ⏱ ${esc(step.time)}</small></button></h3></div>
+    <div class="step-body" id="detail-${key}" role="region" aria-labelledby="toggle-${key}" ${open ? '' : 'hidden'}>
+      <ul class="actions">${step.instructions.map(action => `<li>${esc(action)}</li>`).join('')}</ul>
+      ${step.values.map((value,index) => `<div class="config-value"><div><span>${esc(value.label || 'Value')}</span><code>${esc(value.value)}</code></div><button class="icon-button" data-copy-value="${index}" data-copy-step="${step.index}" aria-label="Copy ${esc(value.label || 'value')}">${icon('copy',16)}</button></div>`).join('')}
+      ${step.warning ? `<p class="heads-up">⚠️ <strong>Heads up:</strong> ${esc(step.warning)}</p>` : ''}
+      <p class="done-when">✅ <strong>Done when:</strong> ${esc(step.verify)}</p>
+      ${step.blockers.length ? `<details class="stuck" id="blockers-${key}"><summary>😵 Stuck?</summary><ul>${step.blockers.map(blocker => `<li><strong>${esc(blocker.problem)}</strong> → ${esc(blocker.solution)}</li>`).join('')}</ul></details>` : ''}
+      <div class="step-actions">${isSafeLink(whereUrl) ? `<a class="button secondary" href="${esc(whereUrl)}" target="_blank" rel="noopener noreferrer">Open ${esc(shortWhere(step.where.label))} ${icon('external',14)}</a>` : ''}<button class="button primary" data-complete="${esc(step.key)}">${isDone ? 'Next step' : 'Done, next'} ${icon('arrow',15)}</button></div>
     </div>
-  </article>`;
+  </li>`;
 }
 function guidePage(guide) {
   if (!guide) return '<div class="list-state" role="status"><span class="spinner"></span><p>Loading your guide…</p></div>';
-  if (typeof guide === 'string') return `<div class="list-state"><h1 tabindex="-1">${guide === 'missing' ? 'Guide not found' : 'We couldn’t load this guide'}</h1><p>${guide === 'missing' ? 'Check the link or find your app in the library.' : 'Check your connection and try again.'}</p>${guide === 'error' ? '<button class="button secondary" data-action="retry-guide">Try again</button>' : ''}<a class="button text-button" href="/guides" data-route="/guides">Browse guides ${icon('arrow',16)}</a></div>`;
+  if (typeof guide === 'string') return `<div class="list-state"><h1 tabindex="-1">${guide === 'missing' ? 'Guide not found 👀' : 'Couldn’t load this guide 😵'}</h1><p>${guide === 'missing' ? 'Check the link or grab one from the library.' : 'Check your connection and try again.'}</p>${guide === 'error' ? '<button class="button secondary" data-action="retry-guide">Try again</button>' : ''}<a class="button text-button" href="/guides" data-route="/guides">Browse guides ${icon('arrow',16)}</a></div>`;
   const path = selectedPath(guide, state.goalId);
   const done = completedSteps(path.steps,state.progress[guide.slug]);
   const percent = path.steps.length ? Math.round(done.length / path.steps.length * 100) : 0;
-  const next = path.steps.find(step => !done.includes(step));
-  let stepNumber = 0;
+  const wait = waitEstimate(guide, path);
+  const needs = guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).slice(0,3);
+  const approval = path.approvalStatus === 'Not Required' ? 'Not needed ✅' : path.approvalStatus === 'Required' ? 'Required 🛂' : path.approvalStatus === 'Conditional' ? 'Depends 🤔' : 'Unclear 🤷';
   return `<div class="guide-content">
     <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button></div></div>
-    <header class="guide-heading"><div class="guide-title">${providerIcon(guide)}<div><div class="eyebrow">OAUTH SETUP GUIDE</div><h1 tabindex="-1">${esc(guide.name)}</h1></div></div><p class="guide-description">${esc(guide.description)}</p><p class="guide-updated">Updated ${formatDate(guide.updated)}</p></header>
-    ${guide.goals.length > 1 ? `<div class="goal-question"><label for="guide-goal">How will you use this integration?</label><select id="guide-goal">${guide.goals.map(goal => `<option value="${esc(goal.id)}" ${goal.id === path.goal?.id ? 'selected' : ''}>${esc(goal.label)}</option>`).join('')}</select>${path.goal?.note ? `<p>${esc(path.goal.note)}</p>` : ''}</div>` : ''}
-    <section class="quick-overview" aria-label="Quick overview"><dl><div><dt>Hands-on setup</dt><dd>${esc(guide.setupTime)}</dd>${guide.setupTime === 'Unknown' ? '<span>Time not documented</span>' : ''}</div><div><dt>Difficulty</dt><dd>${esc(guide.difficulty)}</dd>${guide.difficultyNote ? `<span>${esc(guide.difficultyNote)}</span>` : ''}</div><div><dt>Provider approval</dt><dd class="${path.approvalStatus === 'Required' || path.approvalStatus === 'Conditional' ? 'approval-text' : ''}">${esc(path.approvalStatus)}</dd><span>Separate from OAuth setup</span></div></dl>
-      <div class="approval-note"><strong>${path.approvalStatus === 'Unknown' ? 'Check approval before launch' : 'Your approval path'}</strong><p>${esc(path.approval)}</p>${sourceLinks(path.sourceIds,guide.sources)}${path.approvalStatus !== 'Not Required' ? `<div class="review-wait"><span>External review wait</span><p>${esc(path.reviewWait)}${path.reviewWait === 'Unknown' ? ' — no verified review time available.' : ''}</p>${sourceLinks(path.reviewSourceIds,guide.sources)}</div>` : ''}</div>
-      ${guide.requirements.length ? `<details class="prerequisites" id="prerequisites"><summary>Before you start <span>${guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).length} prerequisites ${icon('down',14)}</span></summary><ul>${guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(item => `<li><strong>${esc(item.title)}</strong><p>${esc(item.detail)}</p>${sourceLinks(item.sourceIds,guide.sources)}</li>`).join('')}</ul></details><p class="prerequisite-preview"><strong>You’ll need:</strong> ${guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).slice(0,3).map(item => esc(item.title)).join(' · ')}</p>` : '<p class="prerequisite-preview">Prerequisites have not been documented. Check the linked provider instructions before starting.</p>'}
+    <header class="guide-heading"><div class="guide-title">${providerIcon(guide)}<h1 tabindex="-1">${esc(guide.name)}</h1></div><p class="guide-description">${esc(guide.description)}</p></header>
+    ${guide.goals.length > 1 ? `<div class="goal-question"><label for="guide-goal">🎯 I want to</label><select id="guide-goal">${guide.goals.map(goal => `<option value="${esc(goal.id)}" ${goal.id === path.goal?.id ? 'selected' : ''}>${esc(goal.label)}</option>`).join('')}</select></div>` : ''}
+    <dl class="stats">
+      <div><dt>⏱ Setup time</dt><dd>~${esc(guide.timeEstimate)}</dd><span>est. hands-on</span></div>
+      <div><dt>🛂 Approval</dt><dd class="approval-${approvalClass(path.approvalStatus)}">${approval}</dd><span>${wait ? `~${esc(wait)} wait (est.)` : 'zero waiting, no cap'}</span></div>
+      <div><dt>🧠 Difficulty</dt><dd>${esc(DIFFICULTY_LABEL[guide.difficulty] || guide.difficultyNote || 'Unclear 🤷')}</dd></div>
+    </dl>
+    ${needs.length ? `<div class="needs"><strong>🎒 You’ll need</strong><ul>${needs.map(item => `<li>${esc(item.title)}</li>`).join('')}</ul></div>` : ''}
+    <section class="steps" aria-labelledby="steps-heading">
+      <div class="steps-head"><h2 id="steps-heading">${path.steps.length && done.length === path.steps.length ? 'All done 🎉 go ship it' : 'The steps 👇'}</h2><span>${done.length}/${path.steps.length} done</span></div>
+      <div class="progress-track" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div style="width:${percent}%"></div></div>
+      ${state.storageError ? '<p class="message" role="status">Browser storage is off, so progress only lasts this visit.</p>' : ''}
+      ${path.steps.length ? `<ol class="stepper">${path.steps.map((step,index) => stepCard(step,index + 1,guide,done)).join('')}</ol>` : '<div class="message">No steps saved for this one. Check the sources below 👇</div>'}
     </section>
-    <section class="setup-section" aria-labelledby="setup-heading"><div class="setup-heading"><div><div class="eyebrow">YOUR SETUP CHECKLIST</div><h2 id="setup-heading">${next ? 'Let’s make the connection.' : path.steps.length ? 'Checklist complete.' : 'Setup instructions'}</h2></div><span class="progress-count">${done.length} of ${path.steps.length} complete</span></div><div class="progress-track" role="progressbar" aria-label="Checklist progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div style="width:${percent}%"></div></div><div class="progress-caption"><span>${next ? `Next: ${esc(next.title)}` : 'Confirm each milestone in the provider dashboard.'}</span><span>Saved on this device</span></div>
-      ${state.storageError ? '<p class="message" role="status">Browser storage is unavailable. Progress is kept for this visit only.</p>' : ''}
-      ${STAGES.map(stage => { const steps = path.steps.filter(step => step.stage === stage); return steps.length ? `<section class="stage-section" aria-label="${stage}"><div class="stage-heading"><span class="stage-index">${String(STAGES.indexOf(stage) + 1).padStart(2,'0')}</span><h2>${stage}</h2><span>${({Prepare:'Get ready',Create:'Register your app',Configure:'Set permissions and redirects',Test:'Verify the connection',Launch:'Enable your distribution path'})[stage]}</span></div>${steps.map(step => stepCard(step,++stepNumber,guide,path,done)).join('')}</section>` : ''; }).join('')}
-      ${!path.steps.length ? '<div class="message">This saved guide has no setup checklist. Use the references below to confirm the next action.</div>' : ''}
-      <div class="milestones"><h3>Check each milestone separately</h3><div><span>OAuth configuration</span><p>A test account connects and the expected API call succeeds.</p></div><div><span>Distribution enabled</span><p>Your chosen audience can install the app under the provider’s rules.</p></div><div><span>Provider approval</span><p>${path.approvalStatus === 'Not Required' ? 'No provider review is required for the selected path. Customer admin policies can still apply.' : 'Confirm the review decision in the provider dashboard when review applies.'}</p></div><p class="milestone-note">Checklist progress records your actions. It does not verify any of these milestones.</p></div>
-    </section>
-    <section class="references-section" aria-label="Troubleshooting and references">
-      <details class="advanced-section" id="troubleshooting"><summary><span><strong>Troubleshooting</strong><small>Common errors and how to fix them</small></span>${icon('plus',18)}</summary>${guide.blockers.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(blocker => `<div class="blocker"><h3>${esc(blocker.problem)}</h3><p>${esc(blocker.solution)}</p></div>`).join('')}${commonBlockers()}</details>
-      <details class="advanced-section" id="references"><summary><span><strong>Official sources & additional details</strong><small>Documentation, alternate paths, and open questions</small></span>${icon('plus',18)}</summary><div class="reference-content"><h3>Official documentation</h3>${guide.sources.length ? `<ul class="reference-links">${guide.sources.map(source => `<li>${link(source.url,source.title)}<small>${esc(source.status)}</small></li>`).join('')}</ul>` : '<p>No verified source links are available for this guide.</p>'}<p class="muted">A reachable link does not confirm every claim. Check current provider rules before launch.</p>${guide.decision ? `<h3>Choose the right approach</h3><p>${esc(guide.decision)}</p>` : ''}${guide.branches.map(branch => `<div class="branch-reference"><strong>${esc(branch.name)}</strong><p>${esc(branch.detail)}</p></div>`).join('')}${guide.unknowns.length ? `<h3>Still to confirm</h3><ul>${guide.unknowns.map(item => `<li>${esc(item)}</li>`).join('')}</ul>` : ''}</div></details>
+    <section class="references-section" aria-label="Troubleshooting and sources">
+      <details class="advanced-section" id="troubleshooting"><summary><strong>🛠 Troubleshooting</strong>${icon('plus',18)}</summary><ul class="fixes">${guide.blockers.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(blocker => `<li><strong>${esc(blocker.problem)}</strong> → ${esc(blocker.solution)}</li>`).join('')}${commonBlockers()}</ul></details>
+      <details class="advanced-section" id="references"><summary><strong>📎 Sources</strong>${icon('plus',18)}</summary><ul class="fixes">${guide.sources.map(source => `<li>${link(source.url,source.title)}</li>`).join('') || '<li>No source links for this one.</li>'}<li class="muted">${esc(guide.type || 'Docs only')} · times are estimates · double-check before launch</li></ul></details>
     </section>
   </div>`;
 }
 function commonBlockers() {
-  return `<div class="blocker"><h3>Redirect URI mismatch</h3><p>Compare the callback URL in your app, authorization request, and token exchange with the provider settings. Check the protocol, hostname, path, port, and trailing slash.</p></div><div class="blocker"><h3>Invalid client credentials</h3><p>Use the client ID and current secret from the same app and environment. Keep the secret on your server. Update it there if you rotated it.</p></div><div class="blocker"><h3>Missing permissions or scopes</h3><p>Check that the requested scopes allow the API action. After changing scopes, reconnect the test account. Confirm any workspace or resource access grants.</p></div>`;
+  return `<li><strong>Redirect URI mismatch</strong> → make the callback URL match exactly: protocol, host, path, port, trailing slash.</li><li><strong>Invalid client credentials</strong> → use the ID + secret from the same app. Secret stays on your server.</li><li><strong>Missing scopes</strong> → add the scope, then reconnect the test account.</li>`;
 }
 let renderedContext = '';
 function render() {
@@ -206,7 +211,7 @@ function toast(message) {
   toastTimer = setTimeout(() => { state.toast = ''; document.querySelector('.toast')?.classList.remove('visible'); },3000);
 }
 async function copyText(value) {
-  try { if (!navigator.clipboard) throw Error(); await navigator.clipboard.writeText(value); toast('Copied to clipboard'); }
+  try { if (!navigator.clipboard) throw Error(); await navigator.clipboard.writeText(value); toast('Copied 📋'); }
   catch { toast('Couldn’t copy. Select and copy the text manually.'); }
 }
 function markStep(key, checked) {
@@ -218,10 +223,11 @@ function markStep(key, checked) {
 }
 function markdown(guide) {
   const path = selectedPath(guide,state.goalId);
-  return [`# ${guide.name} OAuth Setup Guide`, `Generated with Web2Guide · Updated ${guide.updated || 'Unknown'}`, '', guide.description,
-    `\n## Quick overview\n- Hands-on setup: ${guide.setupTime}\n- Difficulty: ${guide.difficulty}\n- Provider approval: ${path.approvalStatus}\n- External review wait: ${path.reviewWait}\n\n${path.approval}`,
-    path.goal ? `\nSelected use: ${path.goal.label}` : '', '\n## Prerequisites', ...guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(item => `- **${item.title}** — ${item.detail}`),
-    ...STAGES.flatMap(stage => { const steps=path.steps.filter(step => step.stage === stage); return !steps.length ? [] : [`\n## ${stage}`, ...steps.map(step => [`\n### ${step.title}`, `Where: ${step.where.label}${step.where.url ? ` (${step.where.url})` : ''}`, ...step.instructions.map((action,index) => `${index+1}. ${action}`), ...step.values.map(value => `\n${value.label}:\n\`\`\`\n${value.value}\n\`\`\``), `\nVerify: ${step.verify}`, step.warning ? `\nNote: ${step.warning}` : '', ...step.blockers.map(blocker => `- ${blocker.problem}: ${blocker.solution}`), ...step.sourceIds.map(id => {const source=guide.sources.find(source=>source.id===id); return source ? `Source: ${source.title} — ${source.url}` : '';})].join('\n'))]; }),
+  return [`# ${guide.name} OAuth Setup Guide`, `Generated with Web2Guide · Updated ${guide.updated || 'Unknown'}${guide.type ? ` · ${guide.type}` : ''}`, '', guide.description,
+    `\n## Quick overview\n- Setup time: ~${guide.timeEstimate} (est.)\n- Difficulty: ${guide.difficulty}\n- Provider approval: ${path.approvalStatus}\n- Review wait: ${waitEstimate(guide,path) ? `~${waitEstimate(guide,path)} (est.)` : 'None'}\n\n${path.approval}`,
+    path.goal ? `\nSelected use: ${path.goal.label}` : '',
+    guide.agentCan.length ? `\n## An agent can\n${guide.agentCan.map(item => `- ${item}`).join('\n')}` : '', guide.humanMust.length ? `\n## You need to\n${guide.humanMust.map(item => `- ${item}`).join('\n')}` : '', '\n## Prerequisites', ...guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(item => `- **${item.title}** — ${item.detail}`),
+    ...STAGES.flatMap(stage => { const steps=path.steps.filter(step => step.stage === stage); return !steps.length ? [] : [`\n## ${stage}`, ...steps.map(step => [`\n### ${step.title}`, step.owner || step.time ? `_${[step.owner, step.time].filter(Boolean).join(' · ')}_` : '', `Where: ${step.where.label}${step.where.url ? ` (${step.where.url})` : ''}`, ...step.instructions.map((action,index) => `${index+1}. ${action}`), ...step.values.map(value => `\n${value.label}:\n\`\`\`\n${value.value}\n\`\`\``), `\nVerify: ${step.verify}`, step.warning ? `\nNote: ${step.warning}` : '', ...step.blockers.map(blocker => `- ${blocker.problem}: ${blocker.solution}`), ...step.sourceIds.map(id => {const source=guide.sources.find(source=>source.id===id); return source ? `Source: ${source.title} — ${source.url}` : '';})].join('\n'))]; }),
     '\n## Troubleshooting', ...guide.blockers.map(blocker=>`- **${blocker.problem}** — ${blocker.solution}`), '\n## Open questions', ...guide.unknowns.map(item=>`- ${item}`), '\n## Official references', ...guide.sources.map(source=>`- ${source.title}: ${source.url} (${source.status})`), '\nChecklist completion does not confirm distribution eligibility or provider approval.'
   ].join('\n');
 }
@@ -241,7 +247,7 @@ root.addEventListener('click', async event => {
     const next = [...path.steps.slice(index+1),...path.steps.slice(0,index)].find(step => !done.includes(step));
     state.openStep = next?.key || '';
     render();
-    if (next) document.querySelector(`#toggle-step-${next.index}`)?.focus(); else toast('Checklist complete. Confirm distribution and approval in the provider dashboard.');
+    if (next) document.querySelector(`#toggle-step-${next.index}`)?.focus(); else toast('All done 🎉 double-check approval in the provider dashboard');
     return;
   }
   if (element.dataset.copyValue !== undefined) { const value = state.guide.steps.find(step=>step.index===Number(element.dataset.copyStep))?.values[Number(element.dataset.copyValue)]; if(value) await copyText(value.value); return; }
