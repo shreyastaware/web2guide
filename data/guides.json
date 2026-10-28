@@ -1,0 +1,628 @@
+[
+  {
+    "slug": "github",
+    "name": "GitHub",
+    "category": "Developer tools",
+    "website": "https://github.com",
+    "icon": "GH",
+    "tone": "#24292f",
+    "difficulty": "Easy",
+    "effort": "30–90 min",
+    "approval": "No standard provider review for OAuth app registration",
+    "confidence": "High",
+    "type": "Curated · official docs",
+    "updated": "2026-10-28",
+    "summary": "Create a GitHub OAuth app in minutes, but first choose between an OAuth app and a GitHub App. GitHub recommends GitHub Apps for modern integrations because permissions are more granular.",
+    "decision": "If you need access to individual repositories or agent actions, evaluate a GitHub App first. Use a classic OAuth app only if its user-level authorization model fits.",
+    "branches": [
+      {
+        "name": "Classic OAuth app",
+        "time": "30–90 min setup",
+        "detail": "Registration is self-service. No published manual approval stage for ordinary OAuth app registration."
+      },
+      {
+        "name": "GitHub App (often preferred)",
+        "time": "1–3 h initial build, estimate",
+        "detail": "Fine-grained permissions and installability; separate app registration and token handling."
+      }
+    ],
+    "requirements": [
+      {
+        "title": "GitHub account with app registration rights",
+        "detail": "Personal account or an organization where you have administrative access.",
+        "sourceIds": [
+          "gh1"
+        ]
+      },
+      {
+        "title": "Public app homepage + callback URL",
+        "detail": "Provide a homepage and correct authorization callback; GitHub currently supports multiple callback URLs.",
+        "sourceIds": [
+          "gh1"
+        ]
+      },
+      {
+        "title": "Secure server-side code exchange",
+        "detail": "Keep client secret off the browser, validate state, handle token expiry/revocation.",
+        "sourceIds": [
+          "gh2"
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "title": "Choose OAuth app or GitHub App",
+        "detail": "Map required actions to permission model. Consider GitHub App installation and fine-grained repository permissions first.",
+        "owner": "Human + agent",
+        "time": "15–30 min",
+        "sourceIds": [
+          "gh1"
+        ]
+      },
+      {
+        "title": "Register the application",
+        "detail": "Settings → Developer settings → OAuth apps → New OAuth App. Enter public name, homepage and authorization callback URL.",
+        "owner": "Human",
+        "time": "5–15 min",
+        "sourceIds": [
+          "gh1"
+        ]
+      },
+      {
+        "title": "Implement and test authorization",
+        "detail": "Agent can generate state validation, callback handler and token exchange; you supply client credentials using environment secrets and authorize a test account.",
+        "owner": "Human + agent",
+        "time": "30–60 min",
+        "sourceIds": [
+          "gh2"
+        ]
+      },
+      {
+        "title": "Test another user and go live",
+        "detail": "Confirm consent screen, scopes, refresh/expiration behavior, error handling, and unlink flows. No generic provider approval submission documented for classic app registration.",
+        "owner": "Human + agent",
+        "time": "30–60 min",
+        "sourceIds": [
+          "gh1",
+          "gh2"
+        ]
+      }
+    ],
+    "blockers": [
+      {
+        "problem": "Wrong access model",
+        "solution": "Use a GitHub App when you need repository-scoped installations, organization approval or independent app actions."
+      },
+      {
+        "problem": "Redirect URI mismatch",
+        "solution": "Register the exact callback URL and ensure the redirect URI used in your authorization flow is an allowed one."
+      },
+      {
+        "problem": "Organization disallows app",
+        "solution": "Ask the organization owner to approve the application; this is workspace-specific, not general GitHub marketplace approval."
+      }
+    ],
+    "agentCan": [
+      "Compare requested actions with GitHub permission models",
+      "Generate OAuth callback, state, token-storage code",
+      "Write a test matrix and checklist"
+    ],
+    "humanMust": [
+      "Own the GitHub account and register the app",
+      "Securely configure credentials and authorize accounts",
+      "Obtain organization approval where required"
+    ],
+    "unknowns": [
+      "Organization-specific third-party OAuth policies vary.",
+      "No credentials were used to register or authorize a real app in this demonstration."
+    ],
+    "sources": [
+      {
+        "id": "gh1",
+        "title": "Creating an OAuth app — GitHub Docs",
+        "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app",
+        "status": "Official docs read"
+      },
+      {
+        "id": "gh2",
+        "title": "Authorizing OAuth apps — GitHub Docs",
+        "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps",
+        "status": "Official docs referenced"
+      }
+    ]
+  },
+  {
+    "slug": "slack",
+    "name": "Slack",
+    "category": "Communication",
+    "website": "https://slack.com",
+    "icon": "S",
+    "tone": "#4a154b",
+    "difficulty": "Hard for Marketplace",
+    "effort": "2–6 h for initial OAuth, estimate",
+    "approval": "Unlisted: no Marketplace review; Marketplace: up to 10 business days preliminary + up to 10 weeks functional",
+    "confidence": "High",
+    "type": "Curated · official docs",
+    "updated": "2026-10-28",
+    "summary": "A Slack app can reach early pilot users through unlisted distribution, but commercial distribution at scale points toward Slack Marketplace approval, with workspace installs and review queues as key blockers.",
+    "decision": "Launch a controlled pilot through unlisted distribution, then pursue Marketplace listing once you have 10 active workspace installations and production-ready onboarding.",
+    "branches": [
+      {
+        "name": "Unlisted distribution / pilot",
+        "time": "Hours of setup; customer admin approval may vary",
+        "detail": "Activate distribution after HTTPS and OAuth setup. Appropriate for early pilots, not a substitute for Marketplace for commercial scale."
+      },
+      {
+        "name": "Slack Marketplace listing",
+        "time": "Up to 10 business days + 10 weeks review (published ceilings)",
+        "detail": "Requires at least 10 installations on active workspaces throughout review and functional/security checks."
+      }
+    ],
+    "requirements": [
+      {
+        "title": "Slack developer app + OAuth scopes",
+        "detail": "Configure bot/user scopes appropriate to functionality; avoid unsupported/restricted scopes for Marketplace.",
+        "sourceIds": [
+          "sl1",
+          "sl2"
+        ]
+      },
+      {
+        "title": "Public HTTPS callback and endpoints",
+        "detail": "SSL is required for OAuth redirects and interactive/event request URLs used for distribution.",
+        "sourceIds": [
+          "sl1"
+        ]
+      },
+      {
+        "title": "Ten active workspaces for Marketplace submission",
+        "detail": "As of July 2026, maintain 10+ installs on active workspaces throughout review; active means used in prior 28 days.",
+        "sourceIds": [
+          "sl2",
+          "sl3"
+        ]
+      },
+      {
+        "title": "Install/uninstall tests, listing and reviewer access",
+        "detail": "Test from a workspace other than development, provide production-ready documentation and credentials for reviewers when needed.",
+        "sourceIds": [
+          "sl2"
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "title": "Create app and choose minimal scopes",
+        "detail": "Start at Slack API app dashboard. Define granular scopes and redirect URL; decide pilot vs Marketplace upfront.",
+        "owner": "Human + agent",
+        "time": "30–45 min",
+        "sourceIds": [
+          "sl1"
+        ]
+      },
+      {
+        "title": "Implement OAuth installation flow",
+        "detail": "Agent writes authorize/callback, token exchange, state checking and workspace token storage. Human configures HTTPS domain and client secret.",
+        "owner": "Human + agent",
+        "time": "1–3 h",
+        "sourceIds": [
+          "sl1"
+        ]
+      },
+      {
+        "title": "Activate unlisted distribution",
+        "detail": "In app dashboard → Manage Distribution, complete checklist and activate public distribution for pilot users.",
+        "owner": "Human",
+        "time": "15–30 min",
+        "sourceIds": [
+          "sl1"
+        ]
+      },
+      {
+        "title": "Qualify for Marketplace review",
+        "detail": "Acquire/maintain 10 active installed workspaces, test installation and uninstall in a separate workspace, prepare support/docs and reviewer accounts.",
+        "owner": "Human",
+        "time": "Variable; cannot assume",
+        "sourceIds": [
+          "sl2",
+          "sl3"
+        ]
+      },
+      {
+        "title": "Submit, address feedback and publish",
+        "detail": "Submit from Slack app settings; preliminary review can take up to 10 business days; functional review up to 10 weeks for new listings.",
+        "owner": "Human",
+        "time": "Weeks",
+        "sourceIds": [
+          "sl2"
+        ]
+      }
+    ],
+    "blockers": [
+      {
+        "problem": "Marketplace submission button blocked",
+        "solution": "Check that at least 10 workspaces with installations are active; requirement persists during review."
+      },
+      {
+        "problem": "Admin approval prevents installs",
+        "solution": "Have the target workspace admin approve the app or request installation through the workspace flow."
+      },
+      {
+        "problem": "Review comes back with scope issues",
+        "solution": "Reduce scopes to functionality actually implemented, provide a demo and updated reviewer instructions."
+      }
+    ],
+    "agentCan": [
+      "Generate Slack manifest and OAuth boilerplate",
+      "Check the scope list against planned features",
+      "Prepare reviewer test plan and compliance checklist"
+    ],
+    "humanMust": [
+      "Sign in, create and distribute the Slack app",
+      "Securely provision production HTTPS endpoints and secrets",
+      "Recruit pilot workspaces and respond to reviewer feedback"
+    ],
+    "unknowns": [
+      "The actual Slack queue can differ; the dashboard submission estimate governs your current wait.",
+      "Workspace-specific admin restrictions are not predictable before installation.",
+      "No real Slack app was created or submitted here."
+    ],
+    "sources": [
+      {
+        "id": "sl1",
+        "title": "App lifecycle & distribution — Slack",
+        "url": "https://docs.slack.dev/app-management/distribution/",
+        "status": "Official docs read"
+      },
+      {
+        "id": "sl2",
+        "title": "Slack Marketplace review process",
+        "url": "https://docs.slack.dev/slack-marketplace/slack-marketplace-review-guide/",
+        "status": "Official docs read"
+      },
+      {
+        "id": "sl3",
+        "title": "September 2026 install threshold update",
+        "url": "https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/",
+        "status": "Official dated changelog"
+      }
+    ]
+  },
+  {
+    "slug": "google",
+    "name": "Google APIs",
+    "category": "Productivity",
+    "website": "https://cloud.google.com",
+    "icon": "G",
+    "tone": "#4285f4",
+    "difficulty": "Depends on scopes",
+    "effort": "1–4 h initial setup, estimate",
+    "approval": "Simple scopes: path depends on brand requirements; sensitive: typically 3–5 business days; restricted: potentially weeks + assessment",
+    "confidence": "High",
+    "type": "Curated · official docs",
+    "updated": "2026-10-28",
+    "summary": "Scope selection determines launch risk. Low-risk sign-in is different from Calendar, Drive, or restricted Gmail access. A restricted-scope app accessing data through servers may need an independent security assessment.",
+    "decision": "Identify the exact API methods and minimum scopes before building. Do not commit to a Google launch date until sensitive/restricted scope classification and verification exceptions are known.",
+    "branches": [
+      {
+        "name": "Sign-in / non-sensitive scopes",
+        "time": "Hours of engineering; branding process may apply",
+        "detail": "Review relevant branding and publication requirements; non-sensitive is not a blanket guarantee of zero verification."
+      },
+      {
+        "name": "Sensitive scopes",
+        "time": "Typically 3–5 business days for verification",
+        "detail": "Requires accurate consent-screen details, verified domains, rationale and feature video; may require additional iteration."
+      },
+      {
+        "name": "Restricted scopes",
+        "time": "Potentially several weeks + external assessment",
+        "detail": "If restricted Google data passes through/gets stored on servers, annual third-party security assessment can apply."
+      }
+    ],
+    "requirements": [
+      {
+        "title": "Cloud project, enabled APIs, OAuth consent branding",
+        "detail": "Set up Branding, Audience and Data Access, provide app name, contacts and policy URLs where required.",
+        "sourceIds": [
+          "go1",
+          "go2"
+        ]
+      },
+      {
+        "title": "Domain ownership and valid redirect URLs",
+        "detail": "For verification, verify domain ownership and use compliant authorized domains / HTTPS production redirect URIs.",
+        "sourceIds": [
+          "go2"
+        ]
+      },
+      {
+        "title": "Minimal scope inventory",
+        "detail": "Classify each scope as non-sensitive, sensitive or restricted; determine whether an exception applies.",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ]
+      },
+      {
+        "title": "Evidence packet for review",
+        "detail": "For sensitive/restricted scopes, prepare feature demo, scope justification, functional privacy policy and contact details.",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "title": "List operations and choose least-privileged scopes",
+        "detail": "Map every agent action to Google API methods and required scopes, flag sensitive or restricted labels in Cloud Console.",
+        "owner": "Human + agent",
+        "time": "20–45 min",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ]
+      },
+      {
+        "title": "Create project, app branding and OAuth client",
+        "detail": "Human signs into Google Cloud, enables APIs, configures OAuth Audience/Branding/Data Access and redirect URIs, and stores the client credentials securely.",
+        "owner": "Human",
+        "time": "30–60 min",
+        "sourceIds": [
+          "go2"
+        ]
+      },
+      {
+        "title": "Build and test end-user connection",
+        "detail": "Agent can create consent URL, callback, CSRF state handling, refresh-token storage and failure-case test scripts; human authorizes test accounts.",
+        "owner": "Human + agent",
+        "time": "1–3 h",
+        "sourceIds": [
+          "go2"
+        ]
+      },
+      {
+        "title": "Prepare scope-specific verification packet",
+        "detail": "Verify owned domains, homepage and privacy policy; record demo video showing requested permissions and feature use.",
+        "owner": "Human + agent",
+        "time": "1–4 h, estimate",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ]
+      },
+      {
+        "title": "Submit review and resolve follow-up",
+        "detail": "Track status in Google Cloud Verification Center and respond to Trust & Safety; restricted-scope security assessment can add weeks.",
+        "owner": "Human",
+        "time": "Days to weeks depending on scopes",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ]
+      }
+    ],
+    "blockers": [
+      {
+        "problem": "Unverified app warning / user cap",
+        "solution": "Inspect requested scopes and Publishing / Verification status; confirm test-user exception vs production obligations."
+      },
+      {
+        "problem": "Domain verification fails",
+        "solution": "Use domains you control, verify in Search Console, align homepage, redirect URI, Terms and privacy policy."
+      },
+      {
+        "problem": "Restricted scope triggers costly security assessment",
+        "solution": "Redesign to narrower scope or avoid sending restricted data through servers when technically possible; confirm applicability with Google."
+      }
+    ],
+    "agentCan": [
+      "Audit API actions and find least-privilege scopes",
+      "Draft consent screen text, privacy policy checklist and demonstration script",
+      "Generate OAuth code and review packet"
+    ],
+    "humanMust": [
+      "Own and verify the required domain",
+      "Create Cloud project, authorize consent and protect credentials",
+      "Submit verification and commission any required security assessment"
+    ],
+    "unknowns": [
+      "Actual requirements depend on the chosen APIs, scopes, app audience and exception eligibility.",
+      "Security assessment pricing is third-party-specific; no numeric fee is asserted.",
+      "No OAuth consent screen or Google verification was completed."
+    ],
+    "sources": [
+      {
+        "id": "go1",
+        "title": "Sensitive scope verification — Google",
+        "url": "https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification",
+        "status": "Official docs read"
+      },
+      {
+        "id": "go2",
+        "title": "OAuth policy compliance — Google",
+        "url": "https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance",
+        "status": "Official docs read"
+      },
+      {
+        "id": "go3",
+        "title": "Restricted scope verification — Google",
+        "url": "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification",
+        "status": "Official docs read"
+      }
+    ]
+  },
+  {
+    "slug": "notion",
+    "name": "Notion",
+    "category": "Knowledge",
+    "website": "https://notion.so",
+    "icon": "N",
+    "tone": "#151515",
+    "difficulty": "Moderate",
+    "effort": "1–3 h for OAuth, estimate",
+    "approval": "Public OAuth: no Marketplace listing needed; optional Marketplace listing: initial response in 5–10 business days",
+    "confidence": "High",
+    "type": "Curated · official docs",
+    "updated": "2026-10-28",
+    "summary": "Public Notion connections use OAuth 2.0, and can be used without a Marketplace listing. The irreversible choice is installation scope: selected workspaces vs any workspace. Marketplace listing, if chosen, has a separate review.",
+    "decision": "Choose “Any workspace” installation scope if you may list in the Marketplace later. It cannot be changed after creating the connection. A public connection works through OAuth without a Marketplace listing.",
+    "branches": [
+      {
+        "name": "Internal connection",
+        "time": "Minutes, but not multi-tenant OAuth",
+        "detail": "Useful for one workspace with static token; does not solve end-user cross-workspace connection."
+      },
+      {
+        "name": "Public connection + OAuth",
+        "time": "1–3 h initial build, estimate",
+        "detail": "Public OAuth connection with the right installation scope. No Marketplace listing is required for OAuth usage."
+      },
+      {
+        "name": "Marketplace listing",
+        "time": "Expect an initial response within 5–10 business days (official FAQ)",
+        "detail": "Optional listing, only for public connections created with Any workspace installation scope; separate review process."
+      }
+    ],
+    "requirements": [
+      {
+        "title": "Notion Developer Portal access",
+        "detail": "Create a connection; only workspace owners can create internal workspace connections.",
+        "sourceIds": [
+          "no1"
+        ]
+      },
+      {
+        "title": "Public connection settings",
+        "detail": "Configure connection for OAuth, redirect URLs, and permissions in developer portal.",
+        "sourceIds": [
+          "no1",
+          "no2"
+        ]
+      },
+      {
+        "title": "Installation scope is permanent",
+        "detail": "Choose Any workspace for broad installation and Marketplace eligibility; Selected workspaces only cannot be changed later.",
+        "sourceIds": [
+          "no2",
+          "no3"
+        ]
+      },
+      {
+        "title": "Page-level user grant",
+        "detail": "The user selects which pages are shared. Your integration cannot see pages that were not granted.",
+        "sourceIds": [
+          "no1"
+        ]
+      },
+      {
+        "title": "Safe access / refresh-token storage",
+        "detail": "Exchange authorization code for access and refresh tokens, then rotate/refresh as specified.",
+        "sourceIds": [
+          "no1"
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "title": "Decide internal token vs public OAuth",
+        "detail": "For users from different Notion workspaces, choose the public connection route.",
+        "owner": "Human + agent",
+        "time": "10–20 min",
+        "sourceIds": [
+          "no1",
+          "no2"
+        ]
+      },
+      {
+        "title": "Create connection and set capabilities",
+        "detail": "In the Developer portal choose Public connections → Create new connection; set name, redirect URI, capabilities and installation scope. Choose Any workspace if Marketplace listing may matter.",
+        "owner": "Human",
+        "time": "15–30 min",
+        "sourceIds": [
+          "no1"
+        ]
+      },
+      {
+        "title": "Implement authorization code + refresh flow",
+        "detail": "Redirect users to Notion, accept code on callback, exchange server-side, encrypt/store access and refresh tokens, support token refresh.",
+        "owner": "Human + agent",
+        "time": "45–90 min",
+        "sourceIds": [
+          "no1"
+        ]
+      },
+      {
+        "title": "Test access to granted and ungranted pages",
+        "detail": "Have user select pages in consent. Verify permitted reads and expected errors for pages not shared.",
+        "owner": "Human + agent",
+        "time": "20–45 min",
+        "sourceIds": [
+          "no1"
+        ]
+      },
+      {
+        "title": "Optionally apply to Notion Marketplace",
+        "detail": "Only Any workspace public connections qualify. Create and submit a listing from Marketplace dashboard. The official FAQ says expect initial feedback in 5–10 business days.",
+        "owner": "Human",
+        "time": "Initial response 5–10 business days",
+        "sourceIds": [
+          "no3"
+        ]
+      }
+    ],
+    "blockers": [
+      {
+        "problem": "Not found / no access to a page",
+        "solution": "Have the user explicitly share the correct Notion page during installation; the connection has no implicit workspace-wide page access."
+      },
+      {
+        "problem": "OAuth callback fails",
+        "solution": "Ensure redirect URI and client credentials match configuration. Use server-side authorization code exchange."
+      },
+      {
+        "problem": "Marketplace listing rejected",
+        "solution": "Read reviewer feedback in the listing dashboard, correct issues with quality, branding or baseline criteria, then resubmit."
+      },
+      {
+        "problem": "Chose Selected workspaces only but now need Marketplace",
+        "solution": "Create a new public connection with Any workspace installation scope; Notion says scope cannot be changed after creation."
+      }
+    ],
+    "agentCan": [
+      "Generate the OAuth consent and refresh-token implementation",
+      "Prepare a capabilities matrix and consent tests",
+      "Check developer docs for latest listing rules"
+    ],
+    "humanMust": [
+      "Log in and configure a public connection",
+      "Secure credentials and select authorized pages",
+      "Complete any optional Marketplace submission and reviewer communication"
+    ],
+    "unknowns": [
+      "The Marketplace FAQ gives an initial response timeline, not guaranteed final approval.",
+      "No actual Notion connection, installation or Marketplace submission was attempted."
+    ],
+    "sources": [
+      {
+        "id": "no1",
+        "title": "Authorization — Notion Docs",
+        "url": "https://developers.notion.com/guides/get-started/authorization",
+        "status": "Official docs read"
+      },
+      {
+        "id": "no2",
+        "title": "Public connections — Notion Docs",
+        "url": "https://developers.notion.com/guides/get-started/public-connections",
+        "status": "Official docs read"
+      },
+      {
+        "id": "no3",
+        "title": "List on the Marketplace — Notion Docs",
+        "url": "https://developers.notion.com/guides/get-started/marketplace-listing",
+        "status": "Official docs read; FAQ specifies 5–10 business days"
+      }
+    ]
+  }
+]

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+.env.*.local
+data/generated.json
+.DS_Store
