@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {guideModel, selectedPath, completedSteps, validateQuery, STAGES} from '../public/guide-model.js';
+import {guideModel, selectedPath, completedSteps, validateQuery, STAGES, waitEstimate, summaryTime, timeBucket} from '../public/guide-model.js';
 import {normalizeGuide} from '../server/research.js';
 const guides=JSON.parse(fs.readFileSync(new URL('../data/guides.json',import.meta.url),'utf8'));
 
@@ -71,4 +71,15 @@ test('structured generated fields survive normalization and reject unsafe URLs a
 test('query validation handles app names, websites, and malformed URLs',()=>{
   for(const input of ['Slack','https://linear.app','google.com','应用']) assert.equal(validateQuery(input),'');
   for(const input of ['', 'x', '<script>', '!!', 'https://', 'ftp://example.com','https://user:secret@example.com']) assert.ok(validateQuery(input));
+});
+
+test('every guide shows a setup time, a wait, and a library time bucket',()=>{
+  const slack=guideModel(guides.find(guide=>guide.slug==='slack'));
+  assert.equal(waitEstimate(slack,selectedPath(slack,'own')),'');
+  assert.equal(waitEstimate(slack,selectedPath(slack,'public')),'4–12 wks');
+  const bare=guideModel({name:'Bare',approvalStatus:'Required',steps:[{title:'Submit for review'}]});
+  assert.equal(bare.timeEstimate,'1–4 h');assert.equal(waitEstimate(bare,selectedPath(bare)),'1–4 wks');
+  assert.deepEqual(guides.map(guide=>timeBucket(summaryTime(guide))),['quick','long','hours','hours']);
+  const generated=normalizeGuide({name:'X',reviewEstimate:'3–5 days',steps:[{title:'Go'}]},'X');
+  assert.equal(generated.reviewEstimate,'3–5 days');
 });

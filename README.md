@@ -25,15 +25,16 @@ The key is never requested or exposed in the browser. Without it, saved guides r
 
 ## Follow a guide
 
-- Read the compact overview, prerequisites, and approval path.
-- Choose your intended use when it changes the requirements. Review-only work is hidden for paths that do not require it.
-- Follow the expandable checklist. Each step contains a dashboard location, short actions, relevant configuration values, a success check, and documentation links.
-- Mark actions complete. Progress and use-case choices are saved on this browser; they do not verify provider-side configuration, distribution, or approval.
-- Open troubleshooting and references when needed. Copy the shareable URL or export the selected path as Markdown.
+- Check the three numbers up top: setup time, approval and wait, difficulty.
+- Pick your use case when it changes the path. Review steps hide when you don't need them.
+- Work through the numbered steps and tick each one off. Progress is saved in this browser only and doesn't verify anything on the provider side.
+- Copy the link to share, or export the guide as Markdown.
 
-Hands-on time and external review wait are separate. A documented setup time is shown when a source supports it; otherwise the engineering effort estimate is shown and labeled **Estimate, not from provider docs**. Review waits are never estimated: without a source they are **Unknown**. Unknown approval requirements remain unknown.
+Every guide shows a **setup time** and an **approval wait**, always marked as estimates (`~`, “est.”). A documented provider duration wins; otherwise the guide's effort estimate is used, then a typical range by difficulty or stage. The live research agent is required to return these estimates. Treat them as planning numbers, not provider commitments.
 
-Each guide shows what an agent can do and where you need to take over, and every step is marked **You**, **Agent**, or **Agent + you** with its estimated time. The header states whether a guide was curated from official docs or produced by agent research.
+Each guide is a short numbered list of steps. Every step shows who does it (🙋 You, 🤖 Agent, 🤝 Agent + you) and roughly how long it takes. Open a step to see the actions, values to copy, a “Done when” check, a link to the right dashboard, and a 😵 Stuck? toggle for blockers. Troubleshooting and sources sit at the bottom, collapsed.
+
+The library can be filtered by setup time (under 1 h, 1–3 h, 3 h+), complexity, and approval.
 
 ## Routes and storage
 

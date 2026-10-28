@@ -1,9 +1,9 @@
-import {STAGES, guideModel, selectedPath, completedSteps, waitEstimate, difficultyLabel, approvalLabel, isSafeLink, validateQuery} from './guide-model.js';
+import {STAGES, TIME_BUCKETS, guideModel, selectedPath, completedSteps, waitEstimate, summaryTime, timeBucket, difficultyLabel, approvalLabel, isSafeLink, validateQuery} from './guide-model.js';
 
 const root = document.querySelector('#root');
 const state = {
   page: 'generator', slug: '', guide: null, guides: [], listStatus: 'loading', enabled: null,
-  query: '', search: '', working: false, activity: '', error: '', sidebar: false,
+  query: '', search: '', filters: {time: '', difficulty: '', approval: ''}, working: false, activity: '', error: '', sidebar: false,
   goalId: '', openStep: '', progress: {}, preferences: {}, toast: '', storageError: false,
 };
 // Retain the original storage key so existing checklists survive the product rename.
@@ -27,16 +27,9 @@ const icon = (name, size = 18) => `<svg aria-hidden="true" width="${size}" heigh
 const link = (url, label, className = '') => isSafeLink(url) ? `<a class="${className}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} ${icon('external', 13)}</a>` : esc(label);
 const safeTone = value => /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(value || '') ? value : '';
 const providerIcon = guide => `<span class="provider-icon" aria-hidden="true" ${safeTone(guide.tone) ? `style="--tone:${guide.tone}"` : ''}>${esc(guide.icon || guide.name?.slice(0, 2) || '?')}</span>`;
+const APPROVAL_LABEL = {'Not Required':'✅ Not needed', Conditional:'🤔 Depends', Required:'🛂 Required', Unknown:'🤷 Unclear'};
+const DIFFICULTY_LABEL = {Easy:'😌 Easy', Moderate:'🤏 Moderate', Advanced:'😤 Advanced', Unknown:'🤷 Unclear'};
 const approvalClass = status => ({Required:'conditional', Conditional:'conditional', 'Not Required':'clear'})[status] || 'unknown';
-const formatDate = value => {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date unknown';
-  const date = new Date(value + 'T00:00:00');
-  return Number.isNaN(date.getTime()) ? 'Date unknown' : new Intl.DateTimeFormat('en', {month:'short', day:'numeric', year:'numeric'}).format(date);
-};
-function sourceLinks(ids, sources, label = '') {
-  const matches = (ids || []).map(id => sources.find(source => source.id === id)).filter(Boolean);
-  return matches.length ? `<div class="source-links">${label ? `<span>${esc(label)}</span>` : ''}${matches.map(source => link(source.url, source.title)).join('')}</div>` : '';
-}
 function persist(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { state.storageError = true; }
 }
@@ -108,13 +101,13 @@ function layout(content) {
 }
 function generatorPage() {
   return `<section class="generator-content" aria-labelledby="generator-title">
-    <h1 id="generator-title" tabindex="-1">Generate an OAuth<br class="desktop-break"> <span>Setup Guide</span></h1>
-    <p class="page-description">Enter an app name or website to get step-by-step instructions for setting up OAuth and understanding its approval requirements.</p>
+    <h1 id="generator-title" tabindex="-1">OAuth setup,<br class="desktop-break"> <span>minus the pain 😮‍💨</span></h1>
+    <p class="page-description">Drop an app name or URL → get the steps, the time, and the approval tea ☕</p>
     <form id="generate-form" class="generate-form" aria-busy="${state.working}" novalidate>
-      <label for="app-query">App name or website URL</label>
-      <div class="generate-input-row ${state.error ? 'invalid' : ''}"><div class="input-with-icon">${icon('globe',20)}<input id="app-query" name="query" type="text" placeholder="e.g. Slack or https://linear.app" value="${esc(state.query)}" maxlength="140" required autocomplete="off" spellcheck="false" ${state.working ? 'disabled' : ''} ${state.error ? 'aria-invalid="true" aria-describedby="generation-error"' : ''}></div><button type="submit" class="button primary" ${state.working ? 'disabled' : ''}>${state.working ? '<span class="spinner"></span> Generating…' : `Generate Guide ${icon('arrow',17)}`}</button></div>
+      <label for="app-query">App name or website</label>
+      <div class="generate-input-row ${state.error ? 'invalid' : ''}"><div class="input-with-icon">${icon('globe',20)}<input id="app-query" name="query" type="text" placeholder="Slack, linear.app, literally any app…" value="${esc(state.query)}" maxlength="140" required autocomplete="off" spellcheck="false" ${state.working ? 'disabled' : ''} ${state.error ? 'aria-invalid="true" aria-describedby="generation-error"' : ''}></div><button type="submit" class="button primary" ${state.working ? 'disabled' : ''}>${state.working ? '<span class="spinner"></span> Generating…' : `Generate ✨`}</button></div>
       ${state.error ? `<div class="message error-message" id="generation-error" role="alert">${icon('info')}<div>${esc(state.error)}</div></div>` : ''}
-      ${state.working ? `<div class="generation-status" role="status" aria-live="polite"><span class="spinner"></span><div><strong>${esc(state.activity || 'Finding the right guide…')}</strong><p>Checking setup instructions and approval requirements. This can take a minute.</p></div></div>` : ''}
+      ${state.working ? `<div class="generation-status" role="status" aria-live="polite"><span class="spinner"></span><div><strong>${esc(state.activity || 'Cooking your guide… 🍳')}</strong><p>Reading the docs so you don’t have to. Takes about a minute ⏳</p></div></div>` : ''}
       ${state.enabled === false && !state.error && !state.working ? '<p class="availability-note">New guide generation is currently unavailable. You can still open saved apps.</p>' : ''}
     </form>
   </section>`;
@@ -122,15 +115,20 @@ function generatorPage() {
 function libraryResults() {
   if (state.listStatus === 'loading') return `<div class="list-state" role="status"><span class="spinner"></span><p>Loading your guides…</p></div>`;
   if (state.listStatus === 'error') return `<div class="list-state"><h2>We couldn’t load the guides</h2><p>Check your connection and try again.</p><button class="button secondary" data-action="retry-list">Try again</button></div>`;
-  const guides = state.guides.filter(guide => `${guide.name} ${guide.summary} ${guide.description || ''}`.toLowerCase().includes(state.search.trim().toLowerCase())).sort((a,b) => String(b.updated || '').localeCompare(String(a.updated || '')) || a.name.localeCompare(b.name));
-  if (!guides.length) return `<div class="list-state">${icon(state.search ? 'search' : 'book',28)}<h2>${state.search ? 'No matching guides' : 'Your first guide starts here'}</h2><p>${state.search ? 'Try another app name, or generate a guide for it.' : 'Enter an app name to create a reusable OAuth setup checklist.'}</p>${state.search ? '<button class="button secondary" data-action="clear-search">Clear search</button>' : ''}<a class="button ${state.search ? 'text-button' : 'primary'}" href="/" data-route="/">Generate a guide ${icon('arrow',16)}</a></div>`;
-  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APPLICATION</span><span>COMPLEXITY</span><span>APPROVAL</span><span>UPDATED</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${esc(difficultyLabel(guide.difficulty))}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalClass(approvalLabel(guide))}">${esc(approvalLabel(guide))}</span></div><div class="row-date"><span class="mobile-label">Updated</span><time datetime="${esc(guide.updated || '')}">${formatDate(guide.updated)}</time></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${state.search ? ' found' : ' available'}</p>`;
+  const {time, difficulty, approval} = state.filters;
+  const filtering = state.search || time || difficulty || approval;
+  const guides = state.guides.filter(guide => `${guide.name} ${guide.summary} ${guide.description || ''}`.toLowerCase().includes(state.search.trim().toLowerCase())
+    && (!time || timeBucket(summaryTime(guide)) === time) && (!difficulty || difficultyLabel(guide.difficulty) === difficulty) && (!approval || approvalLabel(guide) === approval)).sort((a,b) => String(b.updated || '').localeCompare(String(a.updated || '')) || a.name.localeCompare(b.name));
+  if (!guides.length) return `<div class="list-state">${icon(filtering ? 'search' : 'book',28)}<h2>${filtering ? 'Nothing matches 👀' : 'No guides yet 👀'}</h2><p>${filtering ? 'Loosen the filters or generate a fresh one.' : 'Drop an app name and get your first guide.'}</p>${filtering ? '<button class="button secondary" data-action="clear-search">Clear filters</button>' : ''}<a class="button ${filtering ? 'text-button' : 'primary'}" href="/" data-route="/">Generate a guide ${icon('arrow',16)}</a></div>`;
+  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APP</span><span>SETUP</span><span>COMPLEXITY</span><span>APPROVAL</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-time"><span class="mobile-label">Setup</span>~${esc(summaryTime(guide))}</div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${DIFFICULTY_LABEL[difficultyLabel(guide.difficulty)]}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalClass(approvalLabel(guide))}">${APPROVAL_LABEL[approvalLabel(guide)]}</span></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${filtering ? ' match' : ''}</p>`;
+}
+function filterSelect(name, label, anyLabel, options) {
+  return `<label class="filter ${state.filters[name] ? 'active' : ''}"><span class="sr-only">${label}</span><select id="filter-${name}" data-filter="${name}"><option value="">${anyLabel}</option>${options.map(([value,text]) => `<option value="${esc(value)}" ${state.filters[name] === value ? 'selected' : ''}>${esc(text)}</option>`).join('')}</select></label>`;
 }
 function libraryPage() {
-  return `<section class="library-content"><div class="page-heading"><div class="eyebrow">YOUR OAUTH PLAYBOOKS</div><h1 tabindex="-1">Checkout Generated Guides</h1><p class="page-description">Find your app. Pick up where you left off.</p></div><div class="library-toolbar"><label class="search-field" for="guide-search">${icon('search')}<input type="search" id="guide-search" placeholder="Search guides by app name…" value="${esc(state.search)}" autocomplete="off"><span class="sr-only">Search generated guides</span></label></div><div id="library-results">${libraryResults()}</div></section>`;
+  return `<section class="library-content"><div class="page-heading"><h1 tabindex="-1">Your guides 📚</h1><p class="page-description">Find your app. Pick up where you left off.</p></div><div class="library-toolbar"><label class="search-field" for="guide-search">${icon('search')}<input type="search" id="guide-search" placeholder="Search apps…" value="${esc(state.search)}" autocomplete="off"><span class="sr-only">Search guides</span></label>${filterSelect('time','Setup time','⏱ Any setup time',TIME_BUCKETS.map(bucket => [bucket.id,bucket.label]))}${filterSelect('difficulty','Complexity','🧠 Any complexity',Object.entries(DIFFICULTY_LABEL))}${filterSelect('approval','Approval','🛂 Any approval',Object.entries(APPROVAL_LABEL))}</div><div id="library-results">${libraryResults()}</div></section>`;
 }
 const OWNER_LABEL = {You:'🙋 You', Agent:'🤖 Agent', 'Agent + you':'🤝 Agent + you'};
-const DIFFICULTY_LABEL = {Easy:'Easy 😌', Moderate:'Moderate 🤏', Advanced:'Advanced 😤'};
 const shortWhere = label => String(label || '').split('→').pop().trim() || 'dashboard';
 function stepCard(step, number, guide, done) {
   const isDone = done.includes(step);
@@ -157,7 +155,7 @@ function guidePage(guide) {
   const percent = path.steps.length ? Math.round(done.length / path.steps.length * 100) : 0;
   const wait = waitEstimate(guide, path);
   const needs = guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).slice(0,3);
-  const approval = path.approvalStatus === 'Not Required' ? 'Not needed ✅' : path.approvalStatus === 'Required' ? 'Required 🛂' : path.approvalStatus === 'Conditional' ? 'Depends 🤔' : 'Unclear 🤷';
+  const approval = APPROVAL_LABEL[path.approvalStatus] || APPROVAL_LABEL.Unknown;
   return `<div class="guide-content">
     <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button></div></div>
     <header class="guide-heading"><div class="guide-title">${providerIcon(guide)}<h1 tabindex="-1">${esc(guide.name)}</h1></div><p class="guide-description">${esc(guide.description)}</p></header>
@@ -165,7 +163,7 @@ function guidePage(guide) {
     <dl class="stats">
       <div><dt>⏱ Setup time</dt><dd>~${esc(guide.timeEstimate)}</dd><span>est. hands-on</span></div>
       <div><dt>🛂 Approval</dt><dd class="approval-${approvalClass(path.approvalStatus)}">${approval}</dd><span>${wait ? `~${esc(wait)} wait (est.)` : 'zero waiting, no cap'}</span></div>
-      <div><dt>🧠 Difficulty</dt><dd>${esc(DIFFICULTY_LABEL[guide.difficulty] || guide.difficultyNote || 'Unclear 🤷')}</dd></div>
+      <div><dt>🧠 Difficulty</dt><dd>${esc(guide.difficulty === 'Unknown' && guide.difficultyNote ? `🤔 ${guide.difficultyNote}` : DIFFICULTY_LABEL[guide.difficulty])}</dd></div>
     </dl>
     ${needs.length ? `<div class="needs"><strong>🎒 You’ll need</strong><ul>${needs.map(item => `<li>${esc(item.title)}</li>`).join('')}</ul></div>` : ''}
     <section class="steps" aria-labelledby="steps-heading">
@@ -256,7 +254,7 @@ root.addEventListener('click', async event => {
     case 'sidebar-close': state.sidebar = false; render(); document.querySelector('.menu-toggle')?.focus(); break;
     case 'retry-list': loadList(); break;
     case 'retry-guide': loadGuide(state.slug); break;
-    case 'clear-search': state.search = ''; render(); document.querySelector('#guide-search')?.focus(); break;
+    case 'clear-search': state.search = ''; state.filters = {time: '', difficulty: '', approval: ''}; render(); document.querySelector('#guide-search')?.focus(); break;
     case 'copy-link': await copyText(location.href); break;
     case 'export': {
       const url = URL.createObjectURL(new Blob([markdown(state.guide)],{type:'text/markdown;charset=utf-8'}));
@@ -269,6 +267,7 @@ root.addEventListener('input', event => {
   if (event.target.id === 'guide-search') { state.search=event.target.value; render(); }
 });
 root.addEventListener('change', event => {
+  if (event.target.dataset.filter) { state.filters[event.target.dataset.filter] = event.target.value; render(); return; }
   if (event.target.dataset.check !== undefined) { markStep(event.target.dataset.check,event.target.checked); render(); }
   if (event.target.id === 'guide-goal') {
     state.goalId = event.target.value;
@@ -307,7 +306,7 @@ async function generate() {
   state.error = validateQuery(state.query);
   if (state.error) { render(); document.querySelector('#app-query')?.focus(); return; }
   const query = state.query.trim();
-  state.working = true; state.activity = 'Finding the right guide…'; render();
+  state.working = true; state.activity = 'Cooking your guide… 🍳'; render();
   let controller;
   let timeout;
   try {
