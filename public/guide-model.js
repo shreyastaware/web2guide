@@ -31,6 +31,8 @@ export function exactTime(value) {
   const word = text.match(/\b(min(?:ute)?s?|h|hrs?|hours?|days?|wks?|weeks?)\b/i)?.[1].toLowerCase();
   if (!word) return text;
   const unit = word.startsWith('min') ? 'min' : word.startsWith('h') ? 'h' : word.startsWith('d') ? 'day' : 'week';
+  const mixed = text.match(/(\d+(?:\.\d+)?)\s*(?:h|hrs?|hours?)\s*(\d+)\s*min/i);
+  if (mixed) return exactTime(`${Number(mixed[1]) + Number(mixed[2]) / 60} h`);
   const numbers = (text.match(/\d+(?:\.\d+)?/g) || []).map(Number).slice(0, 2);
   const amount = numbers.length ? numbers.reduce((sum, number) => sum + number, 0) / numbers.length : UNIT_DEFAULT[unit];
   if (unit === 'day' || unit === 'week') { const count = Math.max(1, Math.round(amount)); return `${count} ${unit}${count === 1 ? '' : 's'}`; }
