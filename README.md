@@ -40,6 +40,17 @@ Complexity is always Easy, Moderate, or Advanced, and provider approval is eithe
 
 The library can be filtered by setup time (under 1 h, 1–3 h, 3 h+), complexity, and approval.
 
+## Deploy to Vercel
+
+Live at **https://web2guide.vercel.app**.
+
+```sh
+vercel deploy --prod
+vercel env add OPENAI_API_KEY production   # enables live generation, then redeploy
+```
+
+`public/` is served as static files and every `/api/*` request runs `api/index.js`, which reuses `server/index.js` (300 s limit for live research). Vercel functions can't keep files, so generated guides are written to `/tmp` and disappear when the function instance restarts; curated guides are bundled and always available.
+
 ## Routes and storage
 
 | Route | Purpose |

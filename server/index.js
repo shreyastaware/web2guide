@@ -1,12 +1,13 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {research,validInput} from './research.js';
 import {guideSummary} from '../public/guide-model.js';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const dataDir=path.resolve(process.env.DATA_DIR||path.join(root,'data'));
+// Vercel's filesystem is read-only except /tmp, so generated guides live there and last only as long as the instance.
+const dataDir=path.resolve(process.env.DATA_DIR||(process.env.VERCEL?'/tmp/web2guide':path.join(root,'data')));
 const publicDir=path.join(root,'public');
 fs.mkdirSync(dataDir,{recursive:true});
 const seeds=JSON.parse(fs.readFileSync(path.join(root,'data/guides.json'),'utf8'));
@@ -17,7 +18,7 @@ const attempts=new Map();
 const send=(res,code,obj)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(obj));};
 function collect(req){return new Promise((resolve,reject)=>{let s='';req.on('data',c=>{s+=c;if(s.length>1600){reject(Error('Payload too large'));req.destroy();}});req.on('end',()=>{try{resolve(JSON.parse(s||'{}'))}catch{reject(Error('Invalid JSON'))}});req.on('error',reject)});}
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon'};
-const handler=async(req,res)=>{
+export const handler=async(req,res)=>{
  let url;try{url=new URL(req.url,'http://local')}catch{return send(res,400,{error:'Invalid URL'})}
  if(req.method==='GET'&&url.pathname==='/api/health')return send(res,200,{ok:true,guides:seeds.length+generated.length,researchEnabled:!!process.env.OPENAI_API_KEY});
  if(req.method==='GET'&&url.pathname==='/api/guides')return send(res,200,[...seeds,...generated].map(guideSummary));
@@ -48,5 +49,8 @@ const handler=async(req,res)=>{
  const file=path.join(publicDir,pathname==='/'?'index.html':pathname);
  fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':pathname==='/'?'no-cache':'public, max-age=300'});res.end(buf)});
 };
-const port=Number(process.env.PORT||3001);
-http.createServer((req,res)=>{handler(req,res).catch(e=>send(res,500,{error:e.message}))}).listen(port,'0.0.0.0',()=>console.log(`Web2Guide ready at http://localhost:${port}`));
+export const serve=(req,res)=>handler(req,res).catch(e=>send(res,500,{error:e.message}));
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+ const port=Number(process.env.PORT||3001);
+ http.createServer(serve).listen(port,'0.0.0.0',()=>console.log(`Web2Guide ready at http://localhost:${port}`));
+}
