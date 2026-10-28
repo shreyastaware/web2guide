@@ -52,11 +52,30 @@ function parseModelJson(s) {
   throw new Error('The researcher returned invalid JSON');
 }
 
+// Web search can't run in JSON mode, so a malformed reply gets one cheap, search-free pass in JSON mode to fix it.
+async function repairJson(text) {
+  const r = await fetch(process.env.OPENAI_RESPONSES_URL||'https://api.openai.com/v1/responses',{
+    method:'POST', signal:AbortSignal.timeout(60000),
+    headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:process.env.OPENAI_MODEL||'gpt-5-mini',
+      text:{format:{type:'json_object'}},
+      instructions:'Return the following content as valid JSON. Keep every field and value; only fix the syntax.',
+      input:text.slice(0,60000),
+      max_output_tokens:16000
+    })
+  });
+  const response = await r.json();
+  if(!r.ok) throw Error(`Research API ${r.status}: ${response?.error?.message||'request failed'}`);
+  const output = response.output_text || (response.output||[]).filter(i=>i.type==='message').flatMap(i=>i.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('\n');
+  return parseModelJson(output||'');
+}
+
 export async function research(query, notify, useCase="") {
   if (!process.env.OPENAI_API_KEY) throw new Error('Live research requires OPENAI_API_KEY in the server environment. The curated guides remain fully usable without it.');
   notify('Investigating provider documentation with web search');
   const controller = new AbortController();
-  const timeout = setTimeout(()=>controller.abort(),110000);
+  const timeout = setTimeout(()=>controller.abort(),200000); // leaves room for link checks inside Vercel's 300 s limit
   let response;
   try {
     const r = await fetch(process.env.OPENAI_RESPONSES_URL||'https://api.openai.com/v1/responses',{
@@ -67,15 +86,18 @@ export async function research(query, notify, useCase="") {
         tools:[{type:'web_search'}],
         instructions:SYSTEM,
         input:`Research OAuth developer app setup for: ${query}. Use case: ${useCase||"Not specified"}. Investigate the precise provider. Use at least two official links whenever available. Today's date: ${new Date().toISOString().slice(0,10)}. Return JSON only.`,
-        max_output_tokens:10000
+        max_output_tokens:16000
       })
     });
     response = await r.json();
     if(!r.ok) throw Error(`Research API ${r.status}: ${response?.error?.message||'request failed'}`);
   } finally {clearTimeout(timeout);}
+  if(response.status==='incomplete') throw Error(`The researcher stopped early (${response.incomplete_details?.reason||'unknown reason'}). Try again.`);
   notify('Structuring a developer-ready launch plan');
   const output = response.output_text || (response.output||[]).filter(i=>i.type==='message').flatMap(i=>i.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('\n');
-  const raw = parseModelJson(output||'');
+  let raw;
+  try { raw = parseModelJson(output||''); }
+  catch { notify('Tidying up the research'); raw = await repairJson(output||''); }
   const guide = normalizeGuide(raw,query);
   notify('Checking citations and separating unknowns');
   await Promise.all(guide.sources.map(async src=>{

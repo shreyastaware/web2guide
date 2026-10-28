@@ -42,3 +42,16 @@ test('end-to-end: unfamiliar app gets researched, persisted, and served at a sha
   assert.equal(list.find(g=>g.slug==='github').description.includes('GitHub'),true);
  }finally{child.kill();mock.close();fs.rmSync(dir,{recursive:true,force:true})}
 });
+
+test('a malformed research reply is repaired by a second, search-free JSON-mode call',async()=>{
+ const port=await freePort(),bodies=[];
+ const mock=http.createServer((req,res)=>{let s='';req.on('data',c=>s+=c);req.on('end',()=>{const body=JSON.parse(s);bodies.push(body);const text=body.tools?'{"name":"Acme","steps":[{"title": Build it}]}':'{"name":"Acme","steps":[{"title":"Build it"}]}';res.setHeader('Content-Type','application/json');res.end(JSON.stringify({output_text:text}))})});
+ await new Promise(r=>mock.listen(port,'127.0.0.1',r));
+ Object.assign(process.env,{OPENAI_API_KEY:'mock-test-key',OPENAI_RESPONSES_URL:`http://127.0.0.1:${port}/v1/responses`});
+ try{
+  const {research}=await import('../server/research.js');
+  const guide=await research('Acme',()=>{});
+  assert.equal(guide.steps[0].title,'Build it');
+  assert.equal(bodies.length,2);assert.equal(bodies[1].tools,undefined);assert.equal(bodies[1].text.format.type,'json_object');
+ }finally{mock.close();delete process.env.OPENAI_API_KEY;delete process.env.OPENAI_RESPONSES_URL}
+});

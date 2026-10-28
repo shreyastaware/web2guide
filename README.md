@@ -49,7 +49,7 @@ vercel deploy --prod
 vercel env add OPENAI_API_KEY production   # enables live generation, then redeploy
 ```
 
-`public/` is served as static files and every `/api/*` request runs `api/index.js`, which reuses `server/index.js` (300 s limit for live research). Vercel functions can't keep files, so generated guides are written to `/tmp` and disappear when the function instance restarts; curated guides are bundled and always available.
+`public/` is served as static files and every `/api/*` request runs `api/index.js`, which reuses `server/index.js` (300 s limit for live research). Vercel functions can't keep files, so generated guides are stored in Vercel Blob (`guides/<slug>.json`) whenever `BLOB_READ_WRITE_TOKEN` is set. Link a store with `vercel blob store add <name>` and answer yes to linking it. Curated guides are bundled and always available.
 
 ## Routes and storage
 
@@ -64,7 +64,7 @@ vercel env add OPENAI_API_KEY production   # enables live generation, then redep
 | `GET /api/guides/:slug` | Full guide |
 | `POST /api/research` | Guide generation with SSE progress |
 
-The app uses a single Node HTTP process and buildless HTML, CSS, and JavaScript. Curated data lives in `data/guides.json`; research results persist in `DATA_DIR/generated.json` (default: `data/generated.json`). The structured guide fields are additive. Older saved guides continue to render, and the original `authpath_checklists` storage key preserves existing progress.
+The app uses a single Node HTTP process and buildless HTML, CSS, and JavaScript. Curated data lives in `data/guides.json`; research results persist in Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set, otherwise in `DATA_DIR/generated.json` (default: `data/generated.json`). The structured guide fields are additive. Older saved guides continue to render, and the original `authpath_checklists` storage key preserves existing progress.
 
 New guides include structured steps, source-linked approval and timing details, and optional use-case branches. Model text is escaped before rendering. Source URLs are filtered and checked for reachability; reachability is not independent verification of every claim.
 
@@ -82,7 +82,7 @@ Live research requires a valid API key and network access. Automated tests do no
 
 Use the included Dockerfile or any Node-capable host. Set `PORT` if required by the host. Configure `OPENAI_API_KEY` and optionally `OPENAI_MODEL` as server secrets. Mount persistent storage and set `DATA_DIR` to retain generated guides across deploys.
 
-There is no user authentication. Guides are accessible to anyone with the URL. JSON-file persistence is intended for one server process; multiple replicas require coordinated storage. The in-memory generation limit is six requests per IP per hour and resets on restart.
+There is no user authentication. Guides are accessible to anyone with the URL. JSON-file persistence is intended for one server process; multiple replicas need the Blob store. The in-memory generation limit is six requests per IP per hour and resets on restart.
 
 ## License
 
