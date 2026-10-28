@@ -26,4 +26,4 @@ This is a documentation audit, **not** a claim of authenticated provider setup o
 
 ## Engineering tests
 
-Run `npm test` from the project directory. The integration test starts a real AuthPath HTTP server, spins up a mock Responses API, submits an unfamiliar provider, reads SSE progress and completion, checks persistence, retrieves the generated guide and confirms the deep link. **That test does not exercise OpenAI's real web search or external provider setup.**
+Run `npm test` from the project directory. The integration test starts a real Web2Guide HTTP server, spins up a mock Responses API, submits an unfamiliar provider, reads SSE progress and completion, checks persistence, retrieves the generated guide and confirms the deep link. **That test does not exercise OpenAI's real web search or external provider setup.**

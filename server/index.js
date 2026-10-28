@@ -19,7 +19,7 @@ const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; c
 const handler=async(req,res)=>{
  let url;try{url=new URL(req.url,'http://local')}catch{return send(res,400,{error:'Invalid URL'})}
  if(req.method==='GET'&&url.pathname==='/api/health')return send(res,200,{ok:true,guides:seeds.length+generated.length,researchEnabled:!!process.env.OPENAI_API_KEY});
- if(req.method==='GET'&&url.pathname==='/api/guides')return send(res,200,[...seeds,...generated].map(({slug,name,category,website,icon,tone,difficulty,effort,approval,confidence,type,summary,updated})=>({slug,name,category,website,icon,tone,difficulty,effort,approval,confidence,type,summary,updated})));
+ if(req.method==='GET'&&url.pathname==='/api/guides')return send(res,200,[...seeds,...generated].map(({slug,name,category,website,icon,tone,difficulty,effort,approval,confidence,type,summary,updated,description,aliases,approvalStatus})=>({slug,name,category,website,icon,tone,difficulty,effort,approval,confidence,type,summary,updated,description,aliases,approvalStatus})));
  if(req.method==='GET'&&url.pathname.startsWith('/api/guides/')){const slug=decodeURIComponent(url.pathname.slice(12));const g=[...seeds,...generated].find(x=>x.slug===slug);return send(res,g?200:404,g||{error:'Guide not found'});}
  if(req.method==='POST'&&url.pathname==='/api/research'){
   let data;try{data=await collect(req)}catch(e){return send(res,400,{error:e.message})}
@@ -43,9 +43,9 @@ const handler=async(req,res)=>{
  }
  if(req.method!=='GET')return send(res,405,{error:'Method not allowed'});
  let pathname=url.pathname;
- if(!['/','/app.js','/style.css','/favicon.svg'].includes(pathname)){if(pathname.startsWith('/guides/')||pathname==='/research')pathname='/';else return send(res,404,{error:'Not found'})}
+ if(!['/','/app.js','/guide-model.js','/style.css','/favicon.svg'].includes(pathname)){if(pathname.startsWith('/guides/')||pathname==='/research'||pathname==='/guides'||pathname==='/guides/')pathname='/';else return send(res,404,{error:'Not found'})}
  const file=path.join(publicDir,pathname==='/'?'index.html':pathname);
  fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':pathname==='/'?'no-cache':'public, max-age=300'});res.end(buf)});
 };
 const port=Number(process.env.PORT||3001);
-http.createServer((req,res)=>{handler(req,res).catch(e=>send(res,500,{error:e.message}))}).listen(port,'0.0.0.0',()=>console.log(`AuthPath ready at http://localhost:${port}`));
+http.createServer((req,res)=>{handler(req,res).catch(e=>send(res,500,{error:e.message}))}).listen(port,'0.0.0.0',()=>console.log(`Web2Guide ready at http://localhost:${port}`));

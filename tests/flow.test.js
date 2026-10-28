@@ -29,7 +29,16 @@ test('end-to-end: unfamiliar app gets researched, persisted, and served at a sha
   assert.equal(detail.status,200);
   const g=await detail.json();assert.equal(g.name,'Zinc Tasks');assert.ok(g.unknowns.some(s=>s.includes('no authenticated provider setup')));
   const page=await fetch(`http://127.0.0.1:${port}/guides/${slug}`);
-  assert.equal(page.status,200);assert.match(await page.text(),/AuthPath/);
+  assert.equal(page.status,200);assert.match(await page.text(),/Web2Guide/);
   assert.ok(fs.existsSync(path.join(dir,'generated.json')));
+  for(const route of ['/','/guides','/guides/','/research']){
+   const response=await fetch(`http://127.0.0.1:${port}${route}`);
+   assert.equal(response.status,200);assert.match(await response.text(),/Web2Guide/);
+  }
+  const module=await fetch(`http://127.0.0.1:${port}/guide-model.js`);
+  assert.equal(module.status,200);assert.match(module.headers.get('content-type'),/javascript/);
+  const list=await (await fetch(`http://127.0.0.1:${port}/api/guides`)).json();
+  assert.equal(list.find(g=>g.slug==='slack').approvalStatus,'Conditional');
+  assert.equal(list.find(g=>g.slug==='github').description.includes('GitHub'),true);
  }finally{child.kill();mock.close();fs.rmSync(dir,{recursive:true,force:true})}
 });

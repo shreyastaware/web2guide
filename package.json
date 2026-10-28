@@ -1,5 +1,5 @@
 {
- "name":"authpath", "version":"1.0.0", "private":true, "type":"module",
+ "name":"web2guide", "license":"AGPL-3.0-only", "version":"1.0.0", "private":true, "type":"module",
  "description":"Evidence-backed OAuth provider setup and approval guides with live AI research",
  "scripts":{"start":"node server/index.js","dev":"node --watch server/index.js","test":"node --test tests/*.test.js"},
  "engines":{"node":">=20"}

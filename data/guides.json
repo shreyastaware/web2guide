@@ -57,6 +57,23 @@
         "time": "15–30 min",
         "sourceIds": [
           "gh1"
+        ],
+        "stage": "Prepare",
+        "instructions": [
+          "List the GitHub actions and repositories your integration needs.",
+          "Compare a GitHub App’s fine-grained permissions with an OAuth app’s user-level access. Continue here for a classic OAuth app."
+        ],
+        "where": {
+          "label": "GitHub Docs → Create an OAuth app",
+          "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app"
+        },
+        "verify": "You have chosen the app type and listed the minimum access required.",
+        "warning": "This checklist covers classic OAuth apps. A GitHub App uses a different registration and token flow.",
+        "blockers": [
+          {
+            "problem": "Wrong access model",
+            "solution": "Use a GitHub App when you need repository-scoped installations, organization approval or independent app actions."
+          }
         ]
       },
       {
@@ -66,6 +83,30 @@
         "time": "5–15 min",
         "sourceIds": [
           "gh1"
+        ],
+        "stage": "Create",
+        "where": {
+          "label": "GitHub → Settings → Developer settings → OAuth Apps → New OAuth App",
+          "url": "https://github.com/settings/applications/new"
+        },
+        "instructions": [
+          "Enter your app’s public name and homepage.",
+          "Add your application’s callback URL, then register the app.",
+          "Copy the client ID and generate a client secret. Store the secret in your server’s secret manager."
+        ],
+        "values": [
+          {
+            "label": "Authorization callback URL",
+            "value": "https://your-app.example/oauth/github/callback",
+            "hint": "Example only. Replace this with your actual callback endpoint."
+          }
+        ],
+        "verify": "The app settings show your client ID and callback URL. Your server can read the secret.",
+        "blockers": [
+          {
+            "problem": "Redirect URI mismatch",
+            "solution": "Register the exact callback URL and ensure the redirect URI used in your authorization flow is an allowed one."
+          }
         ]
       },
       {
@@ -75,6 +116,37 @@
         "time": "30–60 min",
         "sourceIds": [
           "gh2"
+        ],
+        "stage": "Test",
+        "where": {
+          "label": "Your application → Connect GitHub",
+          "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps"
+        },
+        "instructions": [
+          "Start authorization with a fresh state value and handle the callback on your server.",
+          "Validate state and exchange the authorization code using your client credentials.",
+          "Use the returned token for a permitted API call. Test denial, expiry, and disconnect."
+        ],
+        "values": [
+          {
+            "label": "Authorization endpoint",
+            "value": "https://github.com/login/oauth/authorize"
+          },
+          {
+            "label": "Token endpoint",
+            "value": "https://github.com/login/oauth/access_token"
+          }
+        ],
+        "verify": "A test user connects successfully and an API call returns the expected account or repository data.",
+        "blockers": [
+          {
+            "problem": "Redirect URI mismatch",
+            "solution": "Register the exact callback URL and ensure the redirect URI used in your authorization flow is an allowed one."
+          },
+          {
+            "problem": "Organization disallows app",
+            "solution": "Ask the organization owner to approve the application; this is workspace-specific, not general GitHub marketplace approval."
+          }
         ]
       },
       {
@@ -85,6 +157,57 @@
         "sourceIds": [
           "gh1",
           "gh2"
+        ],
+        "stage": "Launch",
+        "instructions": [
+          "Connect another test user and check the consent screen.",
+          "Ask an organization owner to approve access if that organization restricts OAuth apps.",
+          "Confirm your live callback, token renewal, and disconnect behavior before inviting users."
+        ],
+        "where": {
+          "label": "Your app → Production connection flow",
+          "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps"
+        },
+        "verify": "An intended user can connect and access only the data they authorized.",
+        "warning": "OAuth registration is self-service. Organization access policies and Marketplace listing are separate.",
+        "blockers": [
+          {
+            "problem": "Organization disallows app",
+            "solution": "Ask the organization owner to approve the application; this is workspace-specific, not general GitHub marketplace approval."
+          }
+        ]
+      },
+      {
+        "title": "Set the callback and requested scopes",
+        "stage": "Configure",
+        "detail": "Configure the redirect and minimum access.",
+        "owner": "Human",
+        "time": "Unknown",
+        "sourceIds": [
+          "gh2"
+        ],
+        "where": {
+          "label": "GitHub → Settings → Developer settings → OAuth Apps → Your app",
+          "url": "https://github.com/settings/developers"
+        },
+        "instructions": [
+          "Confirm the callback URL matches the endpoint your application handles.",
+          "Request only the scopes needed for your listed features.",
+          "Keep client credentials on the server and implement state validation."
+        ],
+        "values": [
+          {
+            "label": "Callback URL",
+            "value": "https://your-app.example/oauth/github/callback",
+            "hint": "Example only. Use the same value in app settings and your OAuth flow."
+          }
+        ],
+        "verify": "Your settings and authorization request use the intended callback and minimum scopes.",
+        "blockers": [
+          {
+            "problem": "Redirect URI mismatch",
+            "solution": "Register the exact callback URL and ensure the redirect URI used in your authorization flow is an allowed one."
+          }
         ]
       }
     ],
@@ -129,6 +252,19 @@
         "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps",
         "status": "Official docs referenced"
       }
+    ],
+    "setupTime": "Unknown",
+    "setupTimeSourceIds": [],
+    "reviewWait": "Unknown",
+    "reviewSourceIds": [],
+    "description": "Let users connect their GitHub account and authorize access to the repositories your app needs.",
+    "aliases": [
+      "github.com"
+    ],
+    "approvalStatus": "Not Required",
+    "approvalSourceIds": [
+      "gh1",
+      "gh2"
     ]
   },
   {
@@ -172,6 +308,10 @@
         "detail": "SSL is required for OAuth redirects and interactive/event request URLs used for distribution.",
         "sourceIds": [
           "sl1"
+        ],
+        "goalIds": [
+          "pilot",
+          "public"
         ]
       },
       {
@@ -180,6 +320,9 @@
         "sourceIds": [
           "sl2",
           "sl3"
+        ],
+        "goalIds": [
+          "public"
         ]
       },
       {
@@ -187,6 +330,9 @@
         "detail": "Test from a workspace other than development, provide production-ready documentation and credentials for reviewers when needed.",
         "sourceIds": [
           "sl2"
+        ],
+        "goalIds": [
+          "public"
         ]
       }
     ],
@@ -197,8 +343,20 @@
         "owner": "Human + agent",
         "time": "30–45 min",
         "sourceIds": [
-          "sl1"
-        ]
+          "sl1",
+          "sl4"
+        ],
+        "stage": "Create",
+        "where": {
+          "label": "Slack app dashboard → Create New App → From scratch",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Name your app and choose a development workspace.",
+          "Open Basic Information → App Credentials.",
+          "Save the client ID and store the client secret securely on your server."
+        ],
+        "verify": "The app appears in your development workspace and you have its client credentials."
       },
       {
         "title": "Implement OAuth installation flow",
@@ -206,7 +364,34 @@
         "owner": "Human + agent",
         "time": "1–3 h",
         "sourceIds": [
-          "sl1"
+          "sl4"
+        ],
+        "stage": "Test",
+        "where": {
+          "label": "Your app → Add to Slack → Authorize",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Open your installation link with client_id, scopes, redirect_uri, and a fresh state value.",
+          "After consent, validate state and exchange the code on your server.",
+          "Store tokens by workspace and call an API method covered by the granted scopes."
+        ],
+        "values": [
+          {
+            "label": "Authorization endpoint",
+            "value": "https://slack.com/oauth/v2/authorize"
+          },
+          {
+            "label": "Token endpoint",
+            "value": "https://slack.com/api/oauth.v2.access"
+          }
+        ],
+        "verify": "A workspace authorizes the app and the permitted API call succeeds.",
+        "blockers": [
+          {
+            "problem": "Admin approval prevents installs",
+            "solution": "Have the target workspace admin approve the app or request installation through the workspace flow."
+          }
         ]
       },
       {
@@ -216,6 +401,29 @@
         "time": "15–30 min",
         "sourceIds": [
           "sl1"
+        ],
+        "stage": "Launch",
+        "goalIds": [
+          "pilot",
+          "public"
+        ],
+        "launchKind": "distribution",
+        "where": {
+          "label": "Slack app dashboard → Your app → Manage Distribution",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Complete the distribution checklist and enable public distribution.",
+          "Test installation from another workspace.",
+          "Use unlisted distribution for pilot testing; complete review for commercial distribution."
+        ],
+        "verify": "A pilot workspace other than the development workspace can install your app.",
+        "warning": "Activating distribution does not mean Slack has approved a Marketplace listing.",
+        "blockers": [
+          {
+            "problem": "Admin approval prevents installs",
+            "solution": "Have the target workspace admin approve the app or request installation through the workspace flow."
+          }
         ]
       },
       {
@@ -224,8 +432,31 @@
         "owner": "Human",
         "time": "Variable; cannot assume",
         "sourceIds": [
-          "sl2",
-          "sl3"
+          "sl2"
+        ],
+        "stage": "Launch",
+        "goalIds": [
+          "public"
+        ],
+        "launchKind": "approval",
+        "where": {
+          "label": "Slack app dashboard → Submit to the Slack Marketplace",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Confirm at least 10 active workspaces have installed and tested the app.",
+          "Test onboarding and uninstall from a workspace outside development.",
+          "Prepare listing details, support documentation, and reviewer access."
+        ],
+        "verify": "The submission checklist accepts the workspace threshold and required materials.",
+        "blockers": [
+          {
+            "problem": "Marketplace submission button blocked",
+            "solution": "Check that at least 10 workspaces with installations are active; requirement persists during review.",
+            "goalIds": [
+              "public"
+            ]
+          }
         ]
       },
       {
@@ -235,13 +466,100 @@
         "time": "Weeks",
         "sourceIds": [
           "sl2"
+        ],
+        "stage": "Launch",
+        "goalIds": [
+          "public"
+        ],
+        "launchKind": "approval",
+        "where": {
+          "label": "Slack app dashboard → Submit to the Slack Marketplace",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Review the listing and scopes, then submit the app.",
+          "Track feedback in app settings and fix each reported issue.",
+          "Publish the listing after approval."
+        ],
+        "verify": "Slack explicitly approves the listing and its published status is visible in the dashboard.",
+        "warning": "The published review windows are estimates. Feedback and required fixes can extend launch time.",
+        "blockers": [
+          {
+            "problem": "Review comes back with scope issues",
+            "solution": "Reduce scopes to functionality actually implemented, provide a demo and updated reviewer instructions.",
+            "goalIds": [
+              "public"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Confirm workspace access and app permissions",
+        "stage": "Prepare",
+        "detail": "Check account access.",
+        "owner": "Human",
+        "time": "Unknown",
+        "sourceIds": [
+          "sl1",
+          "sl4"
+        ],
+        "where": {
+          "label": "Slack → Development workspace",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Choose a workspace where you can create and install a test app.",
+          "List the API actions your app needs and check whether the workspace requires admin approval."
+        ],
+        "verify": "You have access to a development workspace and know who can approve installation.",
+        "blockers": [
+          {
+            "problem": "Admin approval prevents installs",
+            "solution": "Have the target workspace admin approve the app or request installation through the workspace flow."
+          }
+        ]
+      },
+      {
+        "title": "Add a redirect URL and minimum scopes",
+        "stage": "Configure",
+        "detail": "Set OAuth permissions.",
+        "owner": "Human",
+        "time": "Unknown",
+        "sourceIds": [
+          "sl4"
+        ],
+        "where": {
+          "label": "Slack app dashboard → Your app → OAuth & Permissions",
+          "url": "https://api.slack.com/apps"
+        },
+        "instructions": [
+          "Under Redirect URLs, add your HTTPS callback and save.",
+          "Under Scopes, add only the bot or user scopes your features need.",
+          "Use the same redirect_uri during authorization and code exchange."
+        ],
+        "values": [
+          {
+            "label": "Redirect URL",
+            "value": "https://your-app.example/oauth/slack/callback",
+            "hint": "Example only. Replace with your own HTTPS endpoint."
+          }
+        ],
+        "verify": "The callback and scopes are saved under OAuth & Permissions.",
+        "blockers": [
+          {
+            "problem": "bad_redirect_uri",
+            "solution": "Use a configured HTTPS redirect and send the same redirect_uri during authorization and token exchange."
+          }
         ]
       }
     ],
     "blockers": [
       {
         "problem": "Marketplace submission button blocked",
-        "solution": "Check that at least 10 workspaces with installations are active; requirement persists during review."
+        "solution": "Check that at least 10 workspaces with installations are active; requirement persists during review.",
+        "goalIds": [
+          "public"
+        ]
       },
       {
         "problem": "Admin approval prevents installs",
@@ -249,7 +567,10 @@
       },
       {
         "problem": "Review comes back with scope issues",
-        "solution": "Reduce scopes to functionality actually implemented, provide a demo and updated reviewer instructions."
+        "solution": "Reduce scopes to functionality actually implemented, provide a demo and updated reviewer instructions.",
+        "goalIds": [
+          "public"
+        ]
       }
     ],
     "agentCan": [
@@ -285,6 +606,63 @@
         "title": "September 2026 install threshold update",
         "url": "https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/",
         "status": "Official dated changelog"
+      },
+      {
+        "id": "sl4",
+        "title": "Install with OAuth — Slack",
+        "url": "https://docs.slack.dev/authentication/installing-with-oauth/",
+        "status": "Official documentation checked"
+      }
+    ],
+    "setupTime": "Unknown",
+    "setupTimeSourceIds": [],
+    "reviewWait": "Unknown",
+    "reviewSourceIds": [],
+    "description": "Let teams connect their Slack workspace so your app can act with the permissions they grant.",
+    "aliases": [
+      "slack",
+      "slack.com"
+    ],
+    "approvalStatus": "Conditional",
+    "approvalSourceIds": [
+      "sl1"
+    ],
+    "goals": [
+      {
+        "id": "own",
+        "label": "Connect my own workspace",
+        "approvalStatus": "Not Required",
+        "approval": "Marketplace review is not required for your own workspace. Your workspace admin may still need to allow the app.",
+        "sourceIds": [
+          "sl1"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": []
+      },
+      {
+        "id": "pilot",
+        "label": "Connect early customer workspaces (pilot)",
+        "approvalStatus": "Conditional",
+        "approval": "Enable unlisted distribution for a pilot. Workspace admins can restrict installs. Commercial distribution should go through Marketplace approval.",
+        "sourceIds": [
+          "sl1"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": []
+      },
+      {
+        "id": "public",
+        "label": "Distribute commercially / publish publicly",
+        "approvalStatus": "Required",
+        "approval": "Submit for Slack Marketplace review before commercial distribution. Test installs alone do not establish approval.",
+        "sourceIds": [
+          "sl1",
+          "sl2"
+        ],
+        "reviewWait": "Preliminary feedback: up to 10 business days. Functional review: up to 10 weeks for new submissions. Check the submission dashboard for the current estimate.",
+        "reviewSourceIds": [
+          "sl2"
+        ]
       }
     ]
   },
@@ -350,6 +728,9 @@
         "sourceIds": [
           "go1",
           "go3"
+        ],
+        "goalIds": [
+          "public"
         ]
       }
     ],
@@ -362,7 +743,18 @@
         "sourceIds": [
           "go1",
           "go3"
-        ]
+        ],
+        "stage": "Prepare",
+        "where": {
+          "label": "Google Cloud → Google Auth Platform → Data Access",
+          "url": "https://console.cloud.google.com/auth/scopes"
+        },
+        "instructions": [
+          "List the Google API actions your app needs.",
+          "Choose the narrowest scopes and check their sensitivity labels.",
+          "Confirm the audience and whether a verification exception applies."
+        ],
+        "verify": "You have a scope inventory with each sensitive or restricted scope identified."
       },
       {
         "title": "Create project, app branding and OAuth client",
@@ -370,8 +762,20 @@
         "owner": "Human",
         "time": "30–60 min",
         "sourceIds": [
+          "go4",
           "go2"
-        ]
+        ],
+        "stage": "Create",
+        "where": {
+          "label": "Google Cloud → Google Auth Platform → Clients",
+          "url": "https://console.cloud.google.com/auth/clients"
+        },
+        "instructions": [
+          "Create or select a Cloud project and enable the APIs you need.",
+          "Configure app Branding and Audience. Add test users when using an external test audience.",
+          "Create a Web application client and securely save its client ID and secret."
+        ],
+        "verify": "A web application OAuth client exists in the intended project."
       },
       {
         "title": "Build and test end-user connection",
@@ -379,7 +783,34 @@
         "owner": "Human + agent",
         "time": "1–3 h",
         "sourceIds": [
-          "go2"
+          "go4"
+        ],
+        "stage": "Test",
+        "where": {
+          "label": "Your application → Connect Google",
+          "url": "https://developers.google.com/identity/protocols/oauth2/web-server"
+        },
+        "instructions": [
+          "Use a Google OAuth client library to start consent with your requested scopes and state.",
+          "Validate the callback and exchange the code on your server.",
+          "Call an enabled API and check token refresh and denied-consent handling."
+        ],
+        "values": [
+          {
+            "label": "Authorization endpoint",
+            "value": "https://accounts.google.com/o/oauth2/v2/auth"
+          },
+          {
+            "label": "Token endpoint",
+            "value": "https://oauth2.googleapis.com/token"
+          }
+        ],
+        "verify": "A permitted test user connects and the expected API request succeeds.",
+        "blockers": [
+          {
+            "problem": "Unverified app warning / user cap",
+            "solution": "Inspect requested scopes and Publishing / Verification status; confirm test-user exception vs production obligations."
+          }
         ]
       },
       {
@@ -390,6 +821,32 @@
         "sourceIds": [
           "go1",
           "go3"
+        ],
+        "stage": "Launch",
+        "goalIds": [
+          "public"
+        ],
+        "launchKind": "approval",
+        "where": {
+          "label": "Google Cloud → Google Auth Platform → Verification Center",
+          "url": "https://console.cloud.google.com/auth/verification"
+        },
+        "instructions": [
+          "Check whether your scopes or branding require verification. If an exception applies, confirm it before submitting.",
+          "For review, prepare verified domains, public app and privacy-policy pages, scope justification, and a feature demo.",
+          "Check whether your restricted-scope data handling requires a security assessment."
+        ],
+        "verify": "Required review materials are complete, or you have confirmed the applicable exception.",
+        "warning": "This step is conditional on your actual scopes, audience, and exception eligibility.",
+        "blockers": [
+          {
+            "problem": "Domain verification fails",
+            "solution": "Use domains you control, verify in Search Console, align homepage, redirect URI, Terms and privacy policy."
+          },
+          {
+            "problem": "Restricted scope triggers costly security assessment",
+            "solution": "Redesign to narrower scope or avoid sending restricted data through servers when technically possible; confirm applicability with Google."
+          }
         ]
       },
       {
@@ -400,6 +857,66 @@
         "sourceIds": [
           "go1",
           "go3"
+        ],
+        "stage": "Launch",
+        "goalIds": [
+          "public"
+        ],
+        "launchKind": "approval",
+        "where": {
+          "label": "Google Cloud → Google Auth Platform → Verification Center",
+          "url": "https://console.cloud.google.com/auth/verification"
+        },
+        "instructions": [
+          "Submit the required verification request when review applies.",
+          "Respond to reviewer questions and complete any required assessment.",
+          "Confirm verification and publishing status before opening access to your intended audience."
+        ],
+        "verify": "The dashboard confirms your required verification is complete, or your documented exception covers this audience.",
+        "warning": "A successful test token does not establish verification or unrestricted production access.",
+        "blockers": [
+          {
+            "problem": "Unverified app warning / user cap",
+            "solution": "Inspect requested scopes and Publishing / Verification status; confirm test-user exception vs production obligations."
+          },
+          {
+            "problem": "Restricted scope triggers costly security assessment",
+            "solution": "Redesign to narrower scope or avoid sending restricted data through servers when technically possible; confirm applicability with Google."
+          }
+        ]
+      },
+      {
+        "title": "Set redirect URLs and data access",
+        "stage": "Configure",
+        "detail": "Configure OAuth client settings.",
+        "owner": "Human",
+        "time": "Unknown",
+        "sourceIds": [
+          "go4",
+          "go2"
+        ],
+        "where": {
+          "label": "Google Auth Platform → Clients → Your client",
+          "url": "https://console.cloud.google.com/auth/clients"
+        },
+        "instructions": [
+          "Add the exact callback under Authorized redirect URIs.",
+          "Check that Data Access lists the scopes your application requests.",
+          "Confirm Audience settings and use the matching client credentials on your server."
+        ],
+        "values": [
+          {
+            "label": "Authorized redirect URI",
+            "value": "https://your-app.example/oauth/google/callback",
+            "hint": "Example only. Replace with your application callback."
+          }
+        ],
+        "verify": "The configured URI exactly matches redirect_uri in your OAuth requests.",
+        "blockers": [
+          {
+            "problem": "redirect_uri_mismatch",
+            "solution": "Check protocol, hostname, port, path, and trailing slash against Authorized redirect URIs."
+          }
         ]
       }
     ],
@@ -450,6 +967,56 @@
         "title": "Restricted scope verification — Google",
         "url": "https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification",
         "status": "Official docs read"
+      },
+      {
+        "id": "go4",
+        "title": "Web server OAuth setup — Google",
+        "url": "https://developers.google.com/identity/protocols/oauth2/web-server",
+        "status": "Official documentation checked"
+      }
+    ],
+    "setupTime": "Unknown",
+    "setupTimeSourceIds": [],
+    "reviewWait": "Unknown",
+    "reviewSourceIds": [],
+    "description": "Let users connect their Google account and grant access to the APIs your app needs.",
+    "aliases": [
+      "google",
+      "google.com",
+      "cloud.google.com"
+    ],
+    "approvalStatus": "Conditional",
+    "approvalSourceIds": [
+      "go1",
+      "go3"
+    ],
+    "goals": [
+      {
+        "id": "test",
+        "label": "Test with my own account or organization",
+        "approvalStatus": "Conditional",
+        "approval": "Personal use, testing, or internal use can qualify for verification exceptions. Check audience and test-user limits before choosing an exception.",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": []
+      },
+      {
+        "id": "public",
+        "label": "Connect external customers or launch publicly",
+        "approvalStatus": "Conditional",
+        "approval": "Sensitive or restricted scopes usually need verification unless an exception applies. Non-sensitive scopes can still have branding requirements.",
+        "sourceIds": [
+          "go1",
+          "go3"
+        ],
+        "reviewWait": "Sensitive scopes: typically 3–5 business days. Restricted-scope review and any assessment vary; no fixed wait is asserted here.",
+        "reviewSourceIds": [
+          "go1",
+          "go3"
+        ]
       }
     ]
   },
@@ -533,6 +1100,26 @@
         "sourceIds": [
           "no1",
           "no2"
+        ],
+        "stage": "Prepare",
+        "where": {
+          "label": "Notion Docs → Public connection authorization",
+          "url": "https://developers.notion.com/guides/get-started/authorization"
+        },
+        "instructions": [
+          "Use a public connection for this OAuth flow, even when testing with your own workspace.",
+          "Choose the installation scope before creating it. Select Any workspace if Marketplace listing may be needed."
+        ],
+        "verify": "You have chosen a public connection and the correct installation scope.",
+        "warning": "Installation scope cannot be changed after creation.",
+        "blockers": [
+          {
+            "problem": "Chose Selected workspaces only but now need Marketplace",
+            "solution": "Create a new public connection with Any workspace installation scope; Notion says scope cannot be changed after creation.",
+            "goalIds": [
+              "marketplace"
+            ]
+          }
         ]
       },
       {
@@ -542,7 +1129,26 @@
         "time": "15–30 min",
         "sourceIds": [
           "no1"
-        ]
+        ],
+        "stage": "Create",
+        "where": {
+          "label": "Notion Developer portal → Public connections → Create new connection",
+          "url": "https://www.notion.so/profile/integrations"
+        },
+        "instructions": [
+          "Create a public connection with its name, capabilities, and installation scope.",
+          "Add your actual redirect URI under OAuth configuration.",
+          "Save the client ID and keep the client secret in your server’s secret store."
+        ],
+        "values": [
+          {
+            "label": "Redirect URI",
+            "value": "https://your-app.example/oauth/notion/callback",
+            "hint": "Example only. Replace with your application callback."
+          }
+        ],
+        "verify": "The public connection has saved OAuth settings and your server has its client credentials.",
+        "warning": "Use Any workspace if you plan to apply for Marketplace listing."
       },
       {
         "title": "Implement authorization code + refresh flow",
@@ -551,6 +1157,33 @@
         "time": "45–90 min",
         "sourceIds": [
           "no1"
+        ],
+        "stage": "Configure",
+        "where": {
+          "label": "Your application → OAuth callback handler",
+          "url": "https://developers.notion.com/guides/get-started/authorization"
+        },
+        "instructions": [
+          "Send users to the connection’s authorization URL with your client ID, redirect URI, and state.",
+          "Handle the callback on your server and validate state.",
+          "Exchange the code, store access and refresh tokens securely, and support token refresh."
+        ],
+        "values": [
+          {
+            "label": "Authorization endpoint",
+            "value": "https://api.notion.com/v1/oauth/authorize"
+          },
+          {
+            "label": "Token endpoint",
+            "value": "https://api.notion.com/v1/oauth/token"
+          }
+        ],
+        "verify": "The callback securely exchanges a valid authorization code and stores the resulting tokens.",
+        "blockers": [
+          {
+            "problem": "OAuth callback fails",
+            "solution": "Ensure redirect URI and client credentials match configuration. Use server-side authorization code exchange."
+          }
         ]
       },
       {
@@ -560,6 +1193,23 @@
         "time": "20–45 min",
         "sourceIds": [
           "no1"
+        ],
+        "stage": "Test",
+        "where": {
+          "label": "Your application → Connect Notion → Select pages",
+          "url": "https://developers.notion.com/guides/get-started/authorization"
+        },
+        "instructions": [
+          "Authorize a test connection and select a page to share.",
+          "Read that page through the API.",
+          "Check that a page you did not share is inaccessible, and test reconnect and token refresh."
+        ],
+        "verify": "The shared page is readable. An unshared page remains inaccessible.",
+        "blockers": [
+          {
+            "problem": "Not found / no access to a page",
+            "solution": "Have the user explicitly share the correct Notion page during installation; the connection has no implicit workspace-wide page access."
+          }
         ]
       },
       {
@@ -569,6 +1219,38 @@
         "time": "Initial response 5–10 business days",
         "sourceIds": [
           "no3"
+        ],
+        "stage": "Launch",
+        "goalIds": [
+          "marketplace"
+        ],
+        "launchKind": "approval",
+        "where": {
+          "label": "Notion Marketplace listing dashboard → Listings → Connections",
+          "url": "https://www.notion.com/profile/listings"
+        },
+        "instructions": [
+          "Start a new connection listing and select your Any workspace public connection.",
+          "Add the listing name, description, category, images, and logo.",
+          "Submit for review and track the response under Listings → Connections."
+        ],
+        "verify": "The listing dashboard confirms approval and the published listing is visible.",
+        "warning": "The 5–10 business day window is for an initial response, not guaranteed publication.",
+        "blockers": [
+          {
+            "problem": "Marketplace listing rejected",
+            "solution": "Read reviewer feedback in the listing dashboard, correct issues with quality, branding or baseline criteria, then resubmit.",
+            "goalIds": [
+              "marketplace"
+            ]
+          },
+          {
+            "problem": "Chose Selected workspaces only but now need Marketplace",
+            "solution": "Create a new public connection with Any workspace installation scope; Notion says scope cannot be changed after creation.",
+            "goalIds": [
+              "marketplace"
+            ]
+          }
         ]
       }
     ],
@@ -583,11 +1265,17 @@
       },
       {
         "problem": "Marketplace listing rejected",
-        "solution": "Read reviewer feedback in the listing dashboard, correct issues with quality, branding or baseline criteria, then resubmit."
+        "solution": "Read reviewer feedback in the listing dashboard, correct issues with quality, branding or baseline criteria, then resubmit.",
+        "goalIds": [
+          "marketplace"
+        ]
       },
       {
         "problem": "Chose Selected workspaces only but now need Marketplace",
-        "solution": "Create a new public connection with Any workspace installation scope; Notion says scope cannot be changed after creation."
+        "solution": "Create a new public connection with Any workspace installation scope; Notion says scope cannot be changed after creation.",
+        "goalIds": [
+          "marketplace"
+        ]
       }
     ],
     "agentCan": [
@@ -622,6 +1310,61 @@
         "title": "List on the Marketplace — Notion Docs",
         "url": "https://developers.notion.com/guides/get-started/marketplace-listing",
         "status": "Official docs read; FAQ specifies 5–10 business days"
+      }
+    ],
+    "setupTime": "Unknown",
+    "setupTimeSourceIds": [],
+    "reviewWait": "Unknown",
+    "reviewSourceIds": [],
+    "description": "Let users connect a Notion workspace and share selected pages with your app.",
+    "aliases": [
+      "notion",
+      "notion.so",
+      "notion.com"
+    ],
+    "approvalStatus": "Conditional",
+    "approvalSourceIds": [
+      "no1",
+      "no3"
+    ],
+    "goals": [
+      {
+        "id": "own",
+        "label": "Connect my own workspace through OAuth",
+        "approvalStatus": "Not Required",
+        "approval": "A public OAuth connection can work without a Marketplace listing. The user still chooses which pages to share.",
+        "sourceIds": [
+          "no1",
+          "no3"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": []
+      },
+      {
+        "id": "customers",
+        "label": "Connect customer workspaces",
+        "approvalStatus": "Not Required",
+        "approval": "Public OAuth does not require a Marketplace listing. Choose an installation scope that includes your intended customers.",
+        "sourceIds": [
+          "no1",
+          "no3"
+        ],
+        "reviewWait": "Unknown",
+        "reviewSourceIds": []
+      },
+      {
+        "id": "marketplace",
+        "label": "Publish on the Notion Marketplace",
+        "approvalStatus": "Required",
+        "approval": "Marketplace listing is a separate, optional review. Only public connections created with Any workspace installation scope qualify.",
+        "sourceIds": [
+          "no2",
+          "no3"
+        ],
+        "reviewWait": "Initial email response: 5–10 business days. This is not a guarantee of final approval.",
+        "reviewSourceIds": [
+          "no3"
+        ]
       }
     ]
   }

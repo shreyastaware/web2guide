@@ -1,37 +1,346 @@
-const root=document.querySelector('#root');
-const state={page:'home',slug:'',guide:null,guides:[],q:'',topic:'All providers',enabled:null,working:false,rquery:'',context:'',stages:[],error:'',sidebar:false,copied:false,tab:'Overview',progress:{}};
-try{state.progress=JSON.parse(localStorage.getItem('authpath_checklists')||'{}')}catch{}
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const icons={branch:'<circle cx="7" cy="6" r="3"/><circle cx="17" cy="6" r="3"/><circle cx="17" cy="18" r="3"/><path d="M7 9v4c0 3 3 5 7 5M17 9v4c0 3-3 5-7 5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',spark:'<path d="m12 3 1.9 6.1L20 11l-6.1 1.9L12 19l-1.9-6.1L4 11l6.1-1.9zM20 19l.5 1.5L22 21l-1.5.5L20 23l-.5-1.5L18 21l1.5-.5z"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',up:'<path d="M7 17 17 7M8 7h9v9"/>',check:'<path d="m5 12 4 4L19 6"/>',chevron:'<path d="m9 18 6-6-6-6"/>',left:'<path d="m15 18-6-6 6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>',book:'<path d="M12 7c-3-2-6-2-9-1v13c3-1 6-1 9 1 3-2 6-2 9-1V6c-3-1-6-1-9 1zm0 0v13"/>',shield:'<path d="M12 22S4 18 4 11V5l8-3 8 3v6c0 7-8 11-8 11z"/><path d="m8 11 3 3 5-5"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',close:'<path d="M5 5l14 14M19 5 5 19"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',download:'<path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4"/>',copy:'<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',warn:'<path d="M10 3h4l9 17H1z"/><path d="M12 9v5m0 3v.1"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-8 8-8s8 3 8 8"/>',people:'<circle cx="9" cy="7" r="4"/><path d="M2 20c0-5 3-8 7-8s7 3 7 8M18 4a4 4 0 0 1 0 8m0 1c3 1 4 3 4 7"/>',globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-6 5-6 13 0 18M12 3c6 5 6 13 0 18"/>',file:'<path d="M6 2h8l5 5v15H6zM14 2v5h5m-9 6h6m-6 4h6"/>',filter:'<path d="M4 6h16M7 12h10m-7 6h4"/>',zap:'<path d="m13 2-9 12h7l-1 8 10-12h-7z"/>'};
-function I(name,size=17){return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[name]||icons.spark}</svg>`}
-function picon(g,large=false){const c=/^#[a-f0-9]{3,8}$/i.test(g.tone)?g.tone:'#6259dd';return `<div class="provider-icon ${large?'large':''}" style="background:${c}12;color:${c};border-color:${c}22">${esc(g.icon||g.name[0])}</div>`}
-function difficulty(v){const tone=v==='Easy'?'green':v==='Moderate'?'amber':v.includes('Hard')?'red':'purple';return `<span class="difficulty ${tone}"><span class="status-dot"></span>${esc(v)}</span>`}
-const route=(to)=>{history.pushState(null,'',to);resolve();window.scrollTo(0,0)};
-function resolve(){const p=location.pathname;state.page=p.startsWith('/guides/')?'guide':p==='/research'?'research':'home';state.slug=p.startsWith('/guides/')?decodeURIComponent(p.split('/')[2]||''):'';state.sidebar=false;if(state.page==='guide')loadGuide(state.slug);else render()}
-async function loadGuide(slug){state.guide=null;render();try{const r=await fetch('/api/guides/'+encodeURIComponent(slug));if(!r.ok)throw Error('Guide not found');state.guide=await r.json()}catch{state.guide='missing'}render()}
-async function loadList(){try{state.guides=await(await fetch('/api/guides')).json();render()}catch{}}
-function layout(content){return `<div class="app-shell"><aside class="sidebar ${state.sidebar?'open':''}"><div class="logo-line" data-route="/"><div class="logo-mark">${I('branch',22)}</div><div><strong>authpath<span class="logo-dot">.</span></strong><small>INTEGRATION INTELLIGENCE</small></div><button class="mobile-close" data-action="sidebar-close">${I('close',18)}</button></div><div class="nav-section-label">WORKSPACE</div><nav class="primary-nav"><button class="${state.page==='home'?'selected':''}" data-route="/">${I('grid',18)} Explore guides <span class="nav-count">${state.guides.length}</span></button><button class="${state.page==='research'?'selected':''}" data-route="/research">${I('spark',18)} Research an app <span class="mini-new">NEW</span></button></nav><div class="nav-section-label nav-separator">QUICK ACCESS</div><nav class="primary-nav recent-nav">${state.guides.slice(0,4).map(g=>`<button class="${state.slug===g.slug?'selected':''}" data-route="/guides/${esc(g.slug)}">${picon(g)}<span>${esc(g.name)}</span></button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-illustration">${I('shield',20)}</div><div class="side-help-title">Research, not guesswork.</div><p>Every guide distinguishes documented facts from estimates and unknowns.</p><a href="https://docs.composio.dev/toolkits/managed-auth" target="_blank" rel="noopener noreferrer">Understand managed OAuth ${I('up',13)}</a></div><div class="side-footer"><span class="online-indicator"></span>${state.enabled?'Research agent available':'Guides available offline'}<span class="footer-version">v1.0</span></div></aside>${state.sidebar?'<div class="mobile-backdrop" data-action="sidebar-close"></div>':''}<main class="main-area"><header class="topbar"><button class="menu-toggle" data-action="sidebar-open">${I('menu',19)}</button><div class="breadcrumb">Workspace ${I('chevron',14)} <span>${state.page==='home'?'Explore':state.page==='research'?'Research':esc(state.guide?.name||'Guide')}</span></div><div class="top-actions"><span class="checked-asof"><span></span> Documentation snapshot · Oct 28, 2026</span><button class="top-generate" data-route="/research">${I('spark',15)} New research</button></div></header><div class="content">${content}</div><footer class="page-footer"><span>${I('branch',14)} AuthPath · An APM Integrations concept</span><span>Docs-based research, not provider approval guarantees</span></footer></main></div>`}
-function home(){const g=state.guides.filter(g=>`${g.name} ${g.category} ${g.summary}`.toLowerCase().includes(state.q.toLowerCase())&&(state.topic==='All providers'||(state.topic==='Easy setup'&&g.difficulty==='Easy')||(state.topic==='Needs review'&&(g.difficulty.includes('Hard')||g.difficulty.includes('scope')||g.approval.toLowerCase().includes('review')))||(state.topic==='Agent researched'&&g.type.includes('Agent'))));return `<section class="hero"><div class="hero-left"><div class="hero-kicker"><span class="kicker-dot"></span>THE OAUTH READINESS LIBRARY</div><h1>Know the path.<br><em>Ship the integration.</em></h1><p>Skip the documentation maze. Get clear setup steps, approval requirements, realistic timelines, and blockers — backed by official sources.</p><div class="hero-actions"><button class="hero-primary" data-route="/research">${I('spark',16)} Research any app ${I('arrow',16)}</button><a href="#library" class="hero-secondary">Browse the library ${I('down',15)}</a></div></div><div class="hero-art"><div class="art-flow"><div class="flow-node input"><div class="node-icon">${I('shield',19)}</div><span>OAuth app</span>${I('check',16)}</div><div class="connector-line"></div><div class="flow-node middle"><div class="node-icon">${I('branch',19)}</div><span>Approval check</span>${I('zap',16)}</div><div class="connector-line"></div><div class="flow-node output"><div class="node-icon">${I('check',19)}</div><span>Ready to launch</span>${I('check',16)}</div></div><div class="orb orb1"></div><div class="orb orb2"></div></div></section>
-<div class="metrics-row"><div><div class="metric-icon violet">${I('book',18)}</div><div><strong>${state.guides.length} <span>guides</span></strong><small>Evidence-backed pathways</small></div></div><div><div class="metric-icon blue">${I('clock',18)}</div><div><strong>Time to launch</strong><small>Setup effort vs review wait</small></div></div><div><div class="metric-icon peach">${I('people',18)}</div><div><strong>Human + agent</strong><small>Clear ownership at each step</small></div></div></div>
-<section id="library" class="library-section"><div class="section-head"><div><div class="eyebrow">EXPLORE THE LIBRARY</div><h2>Provider launch guides <span class="heading-count">${state.guides.length}</span></h2><p>Choose an app to see the entire route from registration to launch.</p></div><button class="text-button" data-route="/research">Missing a provider? ${I('arrow',16)}</button></div><div class="filter-row"><div class="search-box">${I('search',19)}<input id="search-guides" aria-label="Search integrations" value="${esc(state.q)}" placeholder="Search apps, requirements, or workflows...">${state.q?`<button data-action="clear-search">${I('close',15)}</button>`:''}</div><div class="filter-hint">${I('filter',17)} Filter guides</div></div><div class="topic-row">${['All providers','Easy setup','Needs review','Agent researched'].map(t=>`<button data-topic="${esc(t)}" class="${state.topic===t?'active':''}">${t}</button>`).join('')}</div><div class="guide-grid">${g.map(x=>`<button class="provider-card" data-route="/guides/${esc(x.slug)}"><div class="provider-card-top">${picon(x,true)}${I('up',19)}</div><div class="provider-name">${esc(x.name)}</div><div class="provider-category">${esc(x.category)}</div><p>${esc(x.summary)}</p><div class="card-foot">${difficulty(x.difficulty)}<span class="card-effort">${I('clock',14)} ${esc(x.effort)}</span></div></button>`).join('')}<button class="new-provider-card" data-route="/research"><div class="add-icon">${I('spark',25)}</div><strong>Can't find your app?</strong><p>Let the research agent investigate any provider and build a new guide.</p><span>Generate a guide ${I('arrow',17)}</span></button></div>${!g.length?`<div class="empty-state">${I('search',26)}<h3>No matching guides</h3><p>Generate a guide for an unfamiliar provider instead.</p><button data-route="/research">Research a new app ${I('arrow',15)}</button></div>`:''}</section><section class="method-strip"><div class="method-icon">${I('file',21)}</div><div><strong>Built for decisions, not just documentation.</strong><p>Every guide shows conditional approval paths, cited requirements, who takes action, and what remains unverified. The four curated examples were reviewed against official docs; they were not authenticated setup attempts.</p></div><span class="method-tag">EVIDENCE FIRST</span></section>`}
-function researchPage(){return `<section class="research-page"><div class="back-link" data-route="/">${I('left',16)} All guides</div><div class="research-header"><div class="research-big-icon">${I('spark',27)}</div><span class="eyebrow">LIVE RESEARCH AGENT</span><h1>An unfamiliar app?<br><em>We'll map the path.</em></h1><p>Enter an app name or website. The agent searches provider documentation and drafts a shareable OAuth setup guide, including approval hurdles and what you need to do yourself.</p></div><div class="research-layout"><div class="research-form-card"><div class="card-header-line"><div><h3>New integration research</h3><p>Find provider setup, permissions, review requirements, and blockers.</p></div><span class="beta-pill">BETA</span></div><form id="research-form"><label for="research-name">App name or website <span>*</span></label><div class="research-input">${I('globe',19)}<input id="research-name" value="${esc(state.rquery)}" placeholder="e.g. Linear, Dropbox, airbyte.com" maxlength="140" required></div><label for="research-context">Use case <span class="optional">OPTIONAL</span></label><textarea id="research-context" maxlength="280" placeholder="e.g. My agent needs to read issues and create new ones for customer teams." rows="3">${esc(state.context)}</textarea><button class="submit-research" ${state.working?'disabled':''} type="submit">${state.working?`${I('clock',18)} Investigating...`:`${I('spark',18)} Generate OAuth guide ${I('arrow',18)}`}</button></form>${state.enabled===false?`<div class="configuration-note">${I('warn',18)}<div><strong>Live research needs an API key</strong><p>The four curated guides work immediately. To research a new provider, configure <code>OPENAI_API_KEY</code> on the server. No key is ever entered in the browser.</p></div></div>`:''}${state.error?`<div class="error-box">${I('warn',17)}${esc(state.error)}</div>`:''}${state.stages.length?`<div class="activity-log"><strong>Research activity</strong>${state.stages.map((s,i)=>`<div class="activity-line"><div class="activity-dot">${I('check',13)}</div>${esc(s)}</div>`).join('')}</div>`:''}</div><div class="research-explain"><div class="explain-heading"><span class="explain-icon">${I('shield',21)}</span><h3>What happens behind the scenes</h3></div>${[['01','Investigate official docs','The agent searches for the correct developer platform, registration steps, scopes, and distribution rules.'],['02','Map the launch path','It separates engineering effort from provider review, and calls out decisions that change the timeline.'],['03','Verify what it can','Source URLs are checked for reachability; claim correctness and console behavior remain subject to review.'],['04','Produce a shareable guide','The result gets its own URL, actionable checklist, evidence links, and Markdown export.']].map(([n,t,d])=>`<div class="research-phase"><span>${n}</span><div><strong>${t}</strong><p>${d}</p></div></div>`).join('')}<div class="human-boundary">${I('user',18)}<p>The agent does <strong>not</strong> log into provider accounts, register apps, handle credentials, or submit approvals on your behalf.</p></div></div></div></section>`}
-const sourceLinks=(ids,sources)=>{return ids?.length?`<div class="inline-sources">${ids.map(id=>sources.find(s=>s.id===id)).filter(Boolean).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${I('book',12)} ${esc(s.title.split(' — ')[0])} ${I('up',11)}</a>`).join('')}</div>`:''};
-const sectionTitle=(eyebrow,title,icon)=>`<div class="panel-title"><div><span class="eyebrow">${eyebrow}</span><h2>${title}</h2></div>${I(icon,19)}</div>`;
-function guidePage(g){if(!g||g==='missing')return `<div class="loading-guide">${I('book',26)}<p>${g==='missing'?'Guide not found':'Loading guide…'}</p><button data-route="/">Go to library</button></div>`;
- const completed=state.progress[g.slug]||[],pct=Math.round(100*completed.length/g.steps.length);
- return `<div class="guide-view"><div class="guide-back" data-route="/">${I('left',16)} All integrations <span>/</span> ${esc(g.name)}</div><div class="guide-heading"><div class="guide-title-col"><div class="guide-title-line">${picon(g,true)}<div><div class="eyebrow">OAUTH LAUNCH GUIDE <span class="guide-version">· ${esc(g.type.toUpperCase())}</span></div><h1>${esc(g.name)} <span>integration guide</span></h1></div></div><p>${esc(g.summary)}</p><div class="guide-meta">${difficulty(g.difficulty)}<span>${I('clock',14)} Updated ${esc(g.updated)}</span><span>${I('shield',14)} ${esc(g.confidence)} evidence confidence</span></div></div><div class="guide-buttons"><button data-action="copy">${I('copy',16)} ${state.copied?'Copied!':'Copy link'}</button><button class="dark-button" data-action="export">${I('download',16)} Export .md</button></div></div><div class="guide-tabs">${['Overview','Requirements','Blockers','Evidence'].map(t=>`<button data-tab="${t}" class="${state.tab===t?'active':''}">${t}</button>`).join('')}</div><div class="guide-columns"><div class="guide-main"><section class="guide-panel" id="guide-overview">${sectionTitle('01 / THE DECISION','Start with the right path','branch')}<p class="decision-text">${esc(g.decision)}</p><div class="path-options">${g.branches.map((b,i)=>`<div class="path-choice"><div class="branch-number">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(b.name)}</strong><span>${esc(b.time)}</span><p>${esc(b.detail)}</p></div></div>`).join('')}</div></section><section class="guide-panel" id="guide-requirements">${sectionTitle('02 / BEFORE YOU START','Prerequisites & requirements','file')}<div class="requirement-list">${g.requirements.map(r=>`<div class="requirement"><div class="requirement-check">${I('check',15)}</div><div><strong>${esc(r.title)}</strong><p>${esc(r.detail)}</p>${sourceLinks(r.sourceIds,g.sources)}</div></div>`).join('')}</div></section><section class="guide-panel" id="guide-steps">${sectionTitle('03 / ACTION PLAN','From setup to launch','check')}<div class="progress-track"><div style="width:${pct}%"></div></div><div class="step-list">${g.steps.map((s,i)=>`<div class="guide-step ${completed.includes(i)?'done':''}"><button class="step-tick" data-step="${i}" title="Mark step complete">${completed.includes(i)?I('check',17):String(i+1).padStart(2,'0')}</button><div class="step-details"><div class="step-topline"><h3>${esc(s.title)}</h3><span class="owner-label ${s.owner==='Human'?'human':s.owner==='Agent'?'agent':'mixed'}">${I(s.owner==='Human'?'user':'spark',13)} ${esc(s.owner)}</span></div><p>${esc(s.detail)}</p><div class="step-bottom"><span>${I('clock',13)} ${esc(s.time)}</span>${sourceLinks(s.sourceIds,g.sources)}</div></div></div>`).join('')}</div></section><section class="guide-panel" id="guide-blockers">${sectionTitle('04 / WHEN SOMETHING GOES WRONG','Likely blockers & fixes','warn')}${g.blockers.map(b=>`<div class="blocker"><div class="blocker-icon">${I('warn',17)}</div><div><strong>${esc(b.problem)}</strong><p>${esc(b.solution)}</p></div></div>`).join('')}</section><section class="guide-panel" id="guide-evidence">${sectionTitle('05 / RESEARCH TRANSPARENCY','Evidence & open questions','shield')}<p class="evidence-intro">“Official docs read” means a curated guide was checked against the cited source. “Link reachable” in generated research confirms URL accessibility, not that every claim was independently verified.</p><div class="evidence-list">${g.sources.map(s=>`<a class="evidence-item" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"><div class="evidence-number">${esc(s.id)}</div><div><strong>${esc(s.title)}</strong><span>${esc(s.status)}</span><small>${esc(s.url)}</small></div>${I('up',16)}</a>`).join('')}</div><div class="unknown-title">${I('warn',16)} Unverified / still to check</div><ul class="unknown-list">${g.unknowns.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></section></div><aside class="guide-aside"><div class="aside-card estimate-card"><span class="eyebrow">LAUNCH READINESS</span><div class="estimate-label">Initial engineering effort</div><strong class="estimate-value">${esc(g.effort)}</strong><div class="estimate-divider"></div><div class="estimate-label">Provider approval / wait</div><p class="approval-value">${esc(g.approval)}</p><div class="estimate-bottom">${I('shield',15)} Conditional estimates, not guarantees</div></div><div class="aside-card progress-card"><div class="aside-card-title"><span>YOUR CHECKLIST</span><span>${pct}%</span></div><div class="progress-track"><div style="width:${pct}%"></div></div><p>${completed.length} of ${g.steps.length} steps marked complete on this device.</p>${pct===100?`<span class="completed-message">${I('check',14)} Checklist complete — validate in provider console.</span>`:''}</div><div class="aside-card responsibility-card"><div class="aside-card-title"><span>WHO DOES WHAT</span></div><div class="responsibility-heading">${I('spark',16)} Agent can help</div><ul>${g.agentCan.map(s=>`<li>${esc(s)}</li>`).join('')}</ul><div class="responsibility-heading human-heading">${I('user',16)} You take over</div><ul>${g.humanMust.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></div><div class="aside-inset"><strong>Working with another provider?</strong><p>Research a new app and get a reusable path, not just a list of links.</p><button data-route="/research">Research an app ${I('arrow',15)}</button></div></aside></div></div>`}
-function render(){const content=state.page==='home'?home():state.page==='research'?researchPage():guidePage(state.guide);root.innerHTML=layout(content)}
-function md(g){return [`# ${g.name} OAuth setup & approval`,`Updated: ${g.updated} • ${g.type} • Confidence: ${g.confidence}`,`\n${g.summary}`,`\n## Decision\n${g.decision}`,`\n## Timeline\n- Initial engineering: ${g.effort}\n- Provider approval: ${g.approval}`,`\n## Choose a path`,...g.branches.map(b=>`### ${b.name}\n${b.time}\n${b.detail}`),`\n## Requirements`,...g.requirements.map(r=>`- **${r.title}** — ${r.detail} [${r.sourceIds.join(', ')}]`),`\n## Setup checklist`,...g.steps.map((s,i)=>`${i+1}. **${s.title}** (${s.owner}; ${s.time}): ${s.detail} [${s.sourceIds.join(', ')}]`),`\n## Blockers`,...g.blockers.map(b=>`- **${b.problem}:** ${b.solution}`),`\n## Agent can help`,...g.agentCan.map(s=>`- ${s}`),`\n## Human takeover`,...g.humanMust.map(s=>`- ${s}`),`\n## Not verified`,...g.unknowns.map(s=>`- ${s}`),`\n## Sources`,...g.sources.map(s=>`- [${s.id}] ${s.title}: ${s.url} (${s.status})`)].join('\n')}
-root.addEventListener('click',async e=>{const el=e.target.closest('[data-route],[data-action],[data-topic],[data-step],[data-tab]');if(!el)return;
- if(el.dataset.route){e.preventDefault();route(el.dataset.route);return}
- if(el.dataset.topic){state.topic=el.dataset.topic;render();return}
- if(el.dataset.tab){state.tab=el.dataset.tab;render();document.getElementById('guide-'+state.tab.toLowerCase())?.scrollIntoView({behavior:'smooth',block:'start'});return}
- if(el.dataset.step!==undefined){const id=state.guide.slug,idx=Number(el.dataset.step),arr=state.progress[id]||[];state.progress[id]=arr.includes(idx)?arr.filter(x=>x!==idx):[...arr,idx];localStorage.setItem('authpath_checklists',JSON.stringify(state.progress));render();return}
- switch(el.dataset.action){case 'sidebar-open':state.sidebar=true;render();break;case 'sidebar-close':state.sidebar=false;render();break;case 'clear-search':state.q='';render();document.querySelector('#search-guides')?.focus();break;case 'copy':await navigator.clipboard?.writeText(location.href);state.copied=true;render();setTimeout(()=>{state.copied=false;render()},1600);break;case 'export':{const blob=new Blob([md(state.guide)],{type:'text/markdown'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=state.guide.slug+'-oauth-guide.md';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);break;}}
+import {STAGES, guideModel, selectedPath, completedSteps, difficultyLabel, approvalLabel, isSafeLink, validateQuery} from './guide-model.js';
+
+const root = document.querySelector('#root');
+const state = {
+  page: 'generator', slug: '', guide: null, guides: [], listStatus: 'loading', enabled: null,
+  query: '', search: '', working: false, activity: '', error: '', sidebar: false,
+  goalId: '', openStep: '', progress: {}, preferences: {}, toast: '', storageError: false,
+};
+// Retain the original storage key so existing checklists survive the product rename.
+try {
+  const saved = JSON.parse(localStorage.getItem('authpath_checklists') || '{}');
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) state.progress = saved;
+  const preferences = JSON.parse(localStorage.getItem('web2guide_goals') || '{}');
+  if (preferences && typeof preferences === 'object' && !Array.isArray(preferences)) state.preferences = preferences;
+} catch { /* Storage may be unavailable; the checklist still works for this visit. */ }
+const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
+const icons = {
+  arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>', external: '<path d="M14 4h6v6m-9 3 9-9M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', book: '<path d="M4 4h6a2 2 0 0 1 2 2v14a3 3 0 0 0-3-2H4zm16 0h-6a2 2 0 0 0-2 2v14a3 3 0 0 1 3-2h5z"/>',
+  check: '<path d="m5 12 4 4L19 6"/>', chevron: '<path d="m9 5 7 7-7 7"/>', down: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m14 6-6 6 6 6"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>', close: '<path d="m6 6 12 12M18 6 6 18"/>', search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
+  copy: '<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4"/>',
+  download: '<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18"/>',
+};
+const icon = (name, size = 18) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.info}</svg>`;
+const link = (url, label, className = '') => isSafeLink(url) ? `<a class="${className}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} ${icon('external', 13)}</a>` : esc(label);
+const providerIcon = guide => `<span class="provider-icon" aria-hidden="true">${esc(guide.icon || guide.name?.slice(0, 2) || '?')}</span>`;
+const formatDate = value => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date unknown';
+  const date = new Date(value + 'T00:00:00');
+  return Number.isNaN(date.getTime()) ? 'Date unknown' : new Intl.DateTimeFormat('en', {month:'short', day:'numeric', year:'numeric'}).format(date);
+};
+function sourceLinks(ids, sources, label = '') {
+  const matches = (ids || []).map(id => sources.find(source => source.id === id)).filter(Boolean);
+  return matches.length ? `<div class="source-links">${label ? `<span>${esc(label)}</span>` : ''}${matches.map(source => link(source.url, source.title)).join('')}</div>` : '';
+}
+function persist(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { state.storageError = true; }
+}
+function route(path) {
+  history.pushState(null, '', path);
+  resolve();
+  window.scrollTo(0, 0);
+  document.querySelector('h1')?.focus({preventScroll:true});
+}
+let guideRequest = 0;
+function resolve() {
+  const path = location.pathname;
+  state.page = path.startsWith('/guides/') ? 'guide' : path === '/guides' || path === '/guides/' ? 'library' : 'generator';
+  state.sidebar = false;
+  state.toast = '';
+  if (state.page === 'guide') {
+    try { state.slug = decodeURIComponent(path.slice(8)); } catch { state.slug = ''; }
+    loadGuide(state.slug);
+  } else { guideRequest++; render(); }
+}
+async function loadGuide(slug) {
+  const request = ++guideRequest;
+  state.guide = null;
+  render();
+  try {
+    const response = await fetch('/api/guides/' + encodeURIComponent(slug));
+    if (request !== guideRequest) return;
+    if (!response.ok) { state.guide = response.status === 404 ? 'missing' : 'error'; render(); return; }
+    const raw = await response.json();
+    if (request !== guideRequest) return;
+    state.guide = guideModel(raw);
+    state.goalId = state.preferences[slug] || state.guide.goals[0]?.id || '';
+    const path = selectedPath(state.guide, state.goalId);
+    const done = completedSteps(path.steps, state.progress[slug]);
+    state.openStep = path.steps.find(step => !done.includes(step))?.key || path.steps[0]?.key || '';
+  } catch { if (request !== guideRequest) return; state.guide = 'error'; }
+  render();
+}
+async function loadList() {
+  state.listStatus = 'loading';
+  try {
+    const response = await fetch('/api/guides');
+    if (!response.ok) throw Error();
+    const guides = await response.json();
+    if (!Array.isArray(guides)) throw Error();
+    state.guides = guides;
+    state.listStatus = 'ready';
+  } catch { state.listStatus = 'error'; }
+  render();
+}
+function layout(content) {
+  const library = state.page !== 'generator';
+  return `<a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar ${state.sidebar ? 'open' : ''}" id="sidebar" aria-label="Main navigation" ${state.sidebar ? 'role="dialog" aria-modal="true"' : ''}>
+      <a class="brand" href="/" data-route="/" aria-label="Web2Guide home"><span>Web2Guide</span></a>
+      <button class="icon-button mobile-close" data-action="sidebar-close" aria-label="Close navigation">${icon('close')}</button>
+      <nav class="primary-nav" aria-label="Sections">
+        <a href="/" data-route="/" ${!library ? 'aria-current="page"' : ''}>${icon('plus')}<span>Web 2 Guide Generator</span></a>
+        <a href="/guides" data-route="/guides" ${library ? 'aria-current="page"' : ''}>${icon('book')}<span>Checkout Generated Guides</span></a>
+      </nav>
+    </aside>
+    ${state.sidebar ? '<button class="mobile-backdrop" data-action="sidebar-close" aria-label="Close navigation" tabindex="-1"></button>' : ''}
+    <div class="main-area" ${state.sidebar ? 'inert' : ''}>
+      <header class="topbar"><button class="icon-button menu-toggle" data-action="sidebar-open" aria-label="Open navigation" aria-expanded="${state.sidebar}" aria-controls="sidebar">${icon('menu')}</button><span>${state.page === 'generator' ? 'Guide generator' : state.page === 'library' ? 'Generated guides' : `Generated guides <span class="breadcrumb-divider">/</span> <span class="breadcrumb-current">${esc(state.guide?.name || 'Guide')}</span>`}</span></header>
+      <main id="main-content" tabindex="-1" class="content ${state.page}">${content}</main>
+    </div>
+  </div><div class="toast ${state.toast ? 'visible' : ''}" role="status" aria-live="polite">${esc(state.toast)}</div>`;
+}
+function generatorPage() {
+  return `<section class="generator-content" aria-labelledby="generator-title">
+    <h1 id="generator-title" tabindex="-1">Generate an OAuth<br class="desktop-break"> <span>Setup Guide</span></h1>
+    <p class="page-description">Enter an app name or website to get step-by-step instructions for setting up OAuth and understanding its approval requirements.</p>
+    <form id="generate-form" class="generate-form" aria-busy="${state.working}" novalidate>
+      <label for="app-query">App name or website URL</label>
+      <div class="generate-input-row ${state.error ? 'invalid' : ''}"><div class="input-with-icon">${icon('globe',20)}<input id="app-query" name="query" type="text" placeholder="e.g. Slack or https://linear.app" value="${esc(state.query)}" maxlength="140" required autocomplete="off" spellcheck="false" ${state.working ? 'disabled' : ''} ${state.error ? 'aria-invalid="true" aria-describedby="generation-error"' : ''}></div><button type="submit" class="button primary" ${state.working ? 'disabled' : ''}>${state.working ? '<span class="spinner"></span> Generating…' : `Generate Guide ${icon('arrow',17)}`}</button></div>
+      ${state.error ? `<div class="message error-message" id="generation-error" role="alert">${icon('info')}<div>${esc(state.error)}</div></div>` : ''}
+      ${state.working ? `<div class="generation-status" role="status" aria-live="polite"><span class="spinner"></span><div><strong>${esc(state.activity || 'Finding the right guide…')}</strong><p>Checking setup instructions and approval requirements. This can take a minute.</p></div></div>` : ''}
+      ${state.enabled === false && !state.error && !state.working ? '<p class="availability-note">New guide generation is currently unavailable. You can still open saved apps.</p>' : ''}
+    </form>
+  </section>`;
+}
+function libraryResults() {
+  if (state.listStatus === 'loading') return `<div class="list-state" role="status"><span class="spinner"></span><p>Loading your guides…</p></div>`;
+  if (state.listStatus === 'error') return `<div class="list-state"><h2>We couldn’t load the guides</h2><p>Check your connection and try again.</p><button class="button secondary" data-action="retry-list">Try again</button></div>`;
+  const guides = state.guides.filter(guide => `${guide.name} ${guide.summary} ${guide.description || ''}`.toLowerCase().includes(state.search.trim().toLowerCase())).sort((a,b) => String(b.updated || '').localeCompare(String(a.updated || '')) || a.name.localeCompare(b.name));
+  if (!guides.length) return `<div class="list-state">${icon(state.search ? 'search' : 'book',28)}<h2>${state.search ? 'No matching guides' : 'Your first guide starts here'}</h2><p>${state.search ? 'Try another app name, or generate a guide for it.' : 'Enter an app name to create a reusable OAuth setup checklist.'}</p>${state.search ? '<button class="button secondary" data-action="clear-search">Clear search</button>' : ''}<a class="button ${state.search ? 'text-button' : 'primary'}" href="/" data-route="/">Generate a guide ${icon('arrow',16)}</a></div>`;
+  return `<div class="library-table"><div class="library-table-head" aria-hidden="true"><span>APPLICATION</span><span>COMPLEXITY</span><span>APPROVAL</span><span>UPDATED</span><span></span></div>${guides.map(guide => `<a class="guide-row" href="/guides/${encodeURIComponent(guide.slug)}" data-route="/guides/${encodeURIComponent(guide.slug)}" aria-label="View ${esc(guide.name)} guide"><div class="guide-row-app">${providerIcon(guide)}<div><h2>${esc(guide.name)}</h2><p>${esc(guide.description || String(guide.summary || '').split(/(?<=[.!?])\s/)[0] || 'OAuth setup and approval guide.')}</p></div></div><div class="row-difficulty"><span class="mobile-label">Complexity</span>${esc(difficultyLabel(guide.difficulty))}</div><div class="row-approval"><span class="mobile-label">Approval</span><span class="approval-indicator ${approvalLabel(guide) === 'Required' || approvalLabel(guide) === 'Conditional' ? 'conditional' : ''}">${esc(approvalLabel(guide))}</span></div><div class="row-date"><span class="mobile-label">Updated</span><time datetime="${esc(guide.updated || '')}">${formatDate(guide.updated)}</time></div><span class="row-arrow" aria-hidden="true">${icon('arrow',19)}</span></a>`).join('')}</div><p class="result-count" role="status">${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}${state.search ? ' found' : ' available'}</p>`;
+}
+function libraryPage() {
+  return `<section class="library-content"><div class="page-heading"><div class="eyebrow">YOUR OAUTH PLAYBOOKS</div><h1 tabindex="-1">Checkout Generated Guides</h1><p class="page-description">Find your app. Pick up where you left off.</p></div><div class="library-toolbar"><label class="search-field" for="guide-search">${icon('search')}<input type="search" id="guide-search" placeholder="Search guides by app name…" value="${esc(state.search)}" autocomplete="off"><span class="sr-only">Search generated guides</span></label></div><div id="library-results">${libraryResults()}</div></section>`;
+}
+function stepCard(step, number, guide, path, done) {
+  const isDone = done.includes(step);
+  const open = state.openStep === step.key;
+  const key = `step-${step.index}`;
+  const primarySource = guide.sources.find(source => step.sourceIds.includes(source.id));
+  const whereUrl = step.where.url || primarySource?.url;
+  return `<article class="step-card ${isDone ? 'is-complete' : ''} ${open ? 'is-open' : ''}" id="${key}">
+    <div class="step-summary"><input type="checkbox" class="step-checkbox" id="check-${key}" data-check="${esc(step.key)}" ${isDone ? 'checked' : ''} aria-label="Mark ${esc(step.title)} ${isDone ? 'incomplete' : 'complete'}"><h3><button class="step-toggle" id="toggle-${key}" data-open-step="${esc(step.key)}" aria-expanded="${open}" aria-controls="detail-${key}"><span><span class="step-number">${String(number).padStart(2,'0')}</span>${esc(step.title)}</span>${icon(open ? 'down' : 'chevron',17)}</button></h3></div>
+    <div class="step-detail" id="detail-${key}" role="region" aria-labelledby="toggle-${key}" ${open ? '' : 'hidden'}>
+      <div class="instruction-group"><h4>Where to go</h4><p>${link(whereUrl, step.where.label)}</p></div>
+      <div class="instruction-group"><h4>What to do</h4><ol>${step.instructions.map(action => `<li>${esc(action)}</li>`).join('')}</ol></div>
+      ${step.warning ? `<div class="inline-warning">${icon('info',16)}<p>${esc(step.warning)}</p></div>` : ''}
+      ${step.values.length ? `<div class="instruction-group"><h4>What to enter</h4>${step.values.map((value,index) => `<div class="config-value"><div><span>${esc(value.label || 'Configuration value')}</span><code>${esc(value.value)}</code>${value.hint ? `<small>${esc(value.hint)}</small>` : ''}</div><button class="icon-button" data-copy-value="${index}" data-copy-step="${step.index}" aria-label="Copy ${esc(value.label || 'value')}">${icon('copy',16)}</button></div>`).join('')}</div>` : ''}
+      <div class="verify-block"><span class="verify-label">${icon('check',16)} How to verify</span><p>${esc(step.verify)}</p></div>
+      ${step.blockers.length ? `<details class="step-blockers" id="blockers-${key}"><summary>Common blockers ${icon('down',14)}</summary>${step.blockers.map(blocker => `<div class="blocker"><strong>${esc(blocker.problem)}</strong><p>${esc(blocker.solution)}</p></div>`).join('')}</details>` : ''}
+      ${sourceLinks(step.sourceIds,guide.sources,'Official documentation') || '<p class="muted source-gap">No verified source attached. Confirm these instructions with the provider.</p>'}
+      <div class="step-actions"><button class="button ${isDone ? 'secondary' : 'primary'}" data-complete="${esc(step.key)}">${isDone ? 'Continue to next step' : 'Mark complete & continue'} ${icon('arrow',15)}</button></div>
+    </div>
+  </article>`;
+}
+function guidePage(guide) {
+  if (!guide) return '<div class="list-state" role="status"><span class="spinner"></span><p>Loading your guide…</p></div>';
+  if (typeof guide === 'string') return `<div class="list-state"><h1 tabindex="-1">${guide === 'missing' ? 'Guide not found' : 'We couldn’t load this guide'}</h1><p>${guide === 'missing' ? 'Check the link or find your app in the library.' : 'Check your connection and try again.'}</p>${guide === 'error' ? '<button class="button secondary" data-action="retry-guide">Try again</button>' : ''}<a class="button text-button" href="/guides" data-route="/guides">Browse guides ${icon('arrow',16)}</a></div>`;
+  const path = selectedPath(guide, state.goalId);
+  const done = completedSteps(path.steps,state.progress[guide.slug]);
+  const percent = path.steps.length ? Math.round(done.length / path.steps.length * 100) : 0;
+  const next = path.steps.find(step => !done.includes(step));
+  let stepNumber = 0;
+  return `<div class="guide-content">
+    <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button></div></div>
+    <header class="guide-heading"><div class="guide-title">${providerIcon(guide)}<div><div class="eyebrow">OAUTH SETUP GUIDE</div><h1 tabindex="-1">${esc(guide.name)}</h1></div></div><p class="guide-description">${esc(guide.description)}</p><p class="guide-updated">Updated ${formatDate(guide.updated)}</p></header>
+    ${guide.goals.length > 1 ? `<div class="goal-question"><label for="guide-goal">How will you use this integration?</label><select id="guide-goal">${guide.goals.map(goal => `<option value="${esc(goal.id)}" ${goal.id === path.goal?.id ? 'selected' : ''}>${esc(goal.label)}</option>`).join('')}</select>${path.goal?.note ? `<p>${esc(path.goal.note)}</p>` : ''}</div>` : ''}
+    <section class="quick-overview" aria-label="Quick overview"><dl><div><dt>Hands-on setup</dt><dd>${esc(guide.setupTime)}</dd>${guide.setupTime === 'Unknown' ? '<span>Time not documented</span>' : ''}</div><div><dt>Difficulty</dt><dd>${esc(guide.difficulty)}</dd>${guide.difficultyNote ? `<span>${esc(guide.difficultyNote)}</span>` : ''}</div><div><dt>Provider approval</dt><dd class="${path.approvalStatus === 'Required' || path.approvalStatus === 'Conditional' ? 'approval-text' : ''}">${esc(path.approvalStatus)}</dd><span>Separate from OAuth setup</span></div></dl>
+      <div class="approval-note"><strong>${path.approvalStatus === 'Unknown' ? 'Check approval before launch' : 'Your approval path'}</strong><p>${esc(path.approval)}</p>${sourceLinks(path.sourceIds,guide.sources)}${path.approvalStatus !== 'Not Required' ? `<div class="review-wait"><span>External review wait</span><p>${esc(path.reviewWait)}${path.reviewWait === 'Unknown' ? ' — no verified review time available.' : ''}</p>${sourceLinks(path.reviewSourceIds,guide.sources)}</div>` : ''}</div>
+      ${guide.requirements.length ? `<details class="prerequisites" id="prerequisites"><summary>Before you start <span>${guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).length} prerequisites ${icon('down',14)}</span></summary><ul>${guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(item => `<li><strong>${esc(item.title)}</strong><p>${esc(item.detail)}</p>${sourceLinks(item.sourceIds,guide.sources)}</li>`).join('')}</ul></details><p class="prerequisite-preview"><strong>You’ll need:</strong> ${guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).slice(0,3).map(item => esc(item.title)).join(' · ')}</p>` : '<p class="prerequisite-preview">Prerequisites have not been documented. Check the linked provider instructions before starting.</p>'}
+    </section>
+    <section class="setup-section" aria-labelledby="setup-heading"><div class="setup-heading"><div><div class="eyebrow">YOUR SETUP CHECKLIST</div><h2 id="setup-heading">${next ? 'Let’s make the connection.' : path.steps.length ? 'Checklist complete.' : 'Setup instructions'}</h2></div><span class="progress-count">${done.length} of ${path.steps.length} complete</span></div><div class="progress-track" role="progressbar" aria-label="Checklist progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div style="width:${percent}%"></div></div><div class="progress-caption"><span>${next ? `Next: ${esc(next.title)}` : 'Confirm each milestone in the provider dashboard.'}</span><span>Saved on this device</span></div>
+      ${state.storageError ? '<p class="message" role="status">Browser storage is unavailable. Progress is kept for this visit only.</p>' : ''}
+      ${STAGES.map(stage => { const steps = path.steps.filter(step => step.stage === stage); return steps.length ? `<section class="stage-section" aria-label="${stage}"><div class="stage-heading"><span class="stage-index">${String(STAGES.indexOf(stage) + 1).padStart(2,'0')}</span><h2>${stage}</h2><span>${({Prepare:'Get ready',Create:'Register your app',Configure:'Set permissions and redirects',Test:'Verify the connection',Launch:'Enable your distribution path'})[stage]}</span></div>${steps.map(step => stepCard(step,++stepNumber,guide,path,done)).join('')}</section>` : ''; }).join('')}
+      ${!path.steps.length ? '<div class="message">This saved guide has no setup checklist. Use the references below to confirm the next action.</div>' : ''}
+      <div class="milestones"><h3>Check each milestone separately</h3><div><span>OAuth configuration</span><p>A test account connects and the expected API call succeeds.</p></div><div><span>Distribution enabled</span><p>Your chosen audience can install the app under the provider’s rules.</p></div><div><span>Provider approval</span><p>${path.approvalStatus === 'Not Required' ? 'No provider review is required for the selected path. Customer admin policies can still apply.' : 'Confirm the review decision in the provider dashboard when review applies.'}</p></div><p class="milestone-note">Checklist progress records your actions. It does not verify any of these milestones.</p></div>
+    </section>
+    <section class="references-section" aria-label="Troubleshooting and references">
+      <details class="advanced-section" id="troubleshooting"><summary><span><strong>Troubleshooting</strong><small>Common errors and how to fix them</small></span>${icon('plus',18)}</summary>${guide.blockers.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(blocker => `<div class="blocker"><h3>${esc(blocker.problem)}</h3><p>${esc(blocker.solution)}</p></div>`).join('')}${commonBlockers()}</details>
+      <details class="advanced-section" id="references"><summary><span><strong>Official sources & additional details</strong><small>Documentation, alternate paths, and open questions</small></span>${icon('plus',18)}</summary><div class="reference-content"><h3>Official documentation</h3>${guide.sources.length ? `<ul class="reference-links">${guide.sources.map(source => `<li>${link(source.url,source.title)}<small>${esc(source.status)}</small></li>`).join('')}</ul>` : '<p>No verified source links are available for this guide.</p>'}<p class="muted">A reachable link does not confirm every claim. Check current provider rules before launch.</p>${guide.decision ? `<h3>Choose the right approach</h3><p>${esc(guide.decision)}</p>` : ''}${guide.branches.map(branch => `<div class="branch-reference"><strong>${esc(branch.name)}</strong><p>${esc(branch.detail)}</p></div>`).join('')}${guide.unknowns.length ? `<h3>Still to confirm</h3><ul>${guide.unknowns.map(item => `<li>${esc(item)}</li>`).join('')}</ul>` : ''}</div></details>
+    </section>
+  </div>`;
+}
+function commonBlockers() {
+  return `<div class="blocker"><h3>Redirect URI mismatch</h3><p>Compare the callback URL in your app, authorization request, and token exchange with the provider settings. Check the protocol, hostname, path, port, and trailing slash.</p></div><div class="blocker"><h3>Invalid client credentials</h3><p>Use the client ID and current secret from the same app and environment. Keep the secret on your server. Update it there if you rotated it.</p></div><div class="blocker"><h3>Missing permissions or scopes</h3><p>Check that the requested scopes allow the API action. After changing scopes, reconnect the test account. Confirm any workspace or resource access grants.</p></div>`;
+}
+let renderedContext = '';
+function render() {
+  const active = document.activeElement;
+  const focusId = active?.id;
+  const selection = active instanceof HTMLInputElement && ['text','search'].includes(active.type) ? [active.selectionStart, active.selectionEnd] : null;
+  const context = `${state.page}:${state.slug}`;
+  const detailsOpen = renderedContext === context ? [...root.querySelectorAll('details[open][id]')].map(element => element.id) : [];
+  renderedContext = context;
+  root.innerHTML = layout(state.page === 'generator' ? generatorPage() : state.page === 'library' ? libraryPage() : guidePage(state.guide));
+  for (const id of detailsOpen) document.getElementById(id)?.setAttribute('open','');
+  document.body.classList.toggle('nav-open',state.sidebar);
+  if (focusId) {
+    const element = document.getElementById(focusId);
+    element?.focus({preventScroll:true});
+    if (selection && element && !element.disabled) element.setSelectionRange(...selection);
+  }
+  const name = state.page === 'guide' && state.guide?.name ? `${state.guide.name} OAuth Setup` : state.page === 'library' ? 'Generated Guides' : 'Generate an OAuth Setup Guide';
+  document.title = `${name} — Web2Guide`;
+}
+let toastTimer;
+function toast(message) {
+  state.toast = message;
+  const element = document.querySelector('.toast');
+  if (element) { element.textContent = message; element.classList.add('visible'); }
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { state.toast = ''; document.querySelector('.toast')?.classList.remove('visible'); },3000);
+}
+async function copyText(value) {
+  try { if (!navigator.clipboard) throw Error(); await navigator.clipboard.writeText(value); toast('Copied to clipboard'); }
+  catch { toast('Couldn’t copy. Select and copy the text manually.'); }
+}
+function markStep(key, checked) {
+  const guide = state.guide;
+  const saved = Array.isArray(state.progress[guide.slug]) ? state.progress[guide.slug] : [];
+  const filtered = saved.filter(value => String(value) !== key);
+  state.progress[guide.slug] = checked ? [...filtered, /^\d+$/.test(key) ? Number(key) : key] : filtered;
+  persist('authpath_checklists',state.progress);
+}
+function markdown(guide) {
+  const path = selectedPath(guide,state.goalId);
+  return [`# ${guide.name} OAuth Setup Guide`, `Generated with Web2Guide · Updated ${guide.updated || 'Unknown'}`, '', guide.description,
+    `\n## Quick overview\n- Hands-on setup: ${guide.setupTime}\n- Difficulty: ${guide.difficulty}\n- Provider approval: ${path.approvalStatus}\n- External review wait: ${path.reviewWait}\n\n${path.approval}`,
+    path.goal ? `\nSelected use: ${path.goal.label}` : '', '\n## Prerequisites', ...guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).map(item => `- **${item.title}** — ${item.detail}`),
+    ...STAGES.flatMap(stage => { const steps=path.steps.filter(step => step.stage === stage); return !steps.length ? [] : [`\n## ${stage}`, ...steps.map(step => [`\n### ${step.title}`, `Where: ${step.where.label}${step.where.url ? ` (${step.where.url})` : ''}`, ...step.instructions.map((action,index) => `${index+1}. ${action}`), ...step.values.map(value => `\n${value.label}:\n\`\`\`\n${value.value}\n\`\`\``), `\nVerify: ${step.verify}`, step.warning ? `\nNote: ${step.warning}` : '', ...step.blockers.map(blocker => `- ${blocker.problem}: ${blocker.solution}`), ...step.sourceIds.map(id => {const source=guide.sources.find(source=>source.id===id); return source ? `Source: ${source.title} — ${source.url}` : '';})].join('\n'))]; }),
+    '\n## Troubleshooting', ...guide.blockers.map(blocker=>`- **${blocker.problem}** — ${blocker.solution}`), '\n## Open questions', ...guide.unknowns.map(item=>`- ${item}`), '\n## Official references', ...guide.sources.map(source=>`- ${source.title}: ${source.url} (${source.status})`), '\nChecklist completion does not confirm distribution eligibility or provider approval.'
+  ].join('\n');
+}
+root.addEventListener('click', async event => {
+  const element = event.target.closest('[data-route],[data-action],[data-open-step],[data-complete],[data-copy-value]');
+  if (!element) return;
+  if (element.dataset.route) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;
+    event.preventDefault(); route(element.dataset.route); return;
+  }
+  if (element.dataset.openStep !== undefined) { state.openStep = state.openStep === element.dataset.openStep ? '' : element.dataset.openStep; render(); return; }
+  if (element.dataset.complete !== undefined) {
+    const path = selectedPath(state.guide,state.goalId);
+    markStep(element.dataset.complete,true);
+    const index = path.steps.findIndex(step => step.key === element.dataset.complete);
+    const done = completedSteps(path.steps,state.progress[state.guide.slug]);
+    const next = [...path.steps.slice(index+1),...path.steps.slice(0,index)].find(step => !done.includes(step));
+    state.openStep = next?.key || '';
+    render();
+    if (next) document.querySelector(`#toggle-step-${next.index}`)?.focus(); else toast('Checklist complete. Confirm distribution and approval in the provider dashboard.');
+    return;
+  }
+  if (element.dataset.copyValue !== undefined) { const value = state.guide.steps.find(step=>step.index===Number(element.dataset.copyStep))?.values[Number(element.dataset.copyValue)]; if(value) await copyText(value.value); return; }
+  switch(element.dataset.action) {
+    case 'sidebar-open': state.sidebar = true; render(); document.querySelector('.mobile-close')?.focus(); break;
+    case 'sidebar-close': state.sidebar = false; render(); document.querySelector('.menu-toggle')?.focus(); break;
+    case 'retry-list': loadList(); break;
+    case 'retry-guide': loadGuide(state.slug); break;
+    case 'clear-search': state.search = ''; render(); document.querySelector('#guide-search')?.focus(); break;
+    case 'copy-link': await copyText(location.href); break;
+    case 'export': {
+      const url = URL.createObjectURL(new Blob([markdown(state.guide)],{type:'text/markdown;charset=utf-8'}));
+      const anchor = document.createElement('a'); anchor.href=url; anchor.download=state.guide.slug+'-oauth-guide.md'; anchor.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); break;
+    }
+  }
 });
-root.addEventListener('input',e=>{if(e.target.id==='search-guides'){state.q=e.target.value;const pos=e.target.selectionStart;render();const box=document.querySelector('#search-guides');box?.focus();box?.setSelectionRange(pos,pos)}if(e.target.id==='research-name')state.rquery=e.target.value;if(e.target.id==='research-context')state.context=e.target.value});
-root.addEventListener('submit',async e=>{if(e.target.id!=='research-form')return;e.preventDefault();if(state.working||!state.rquery.trim())return;state.working=true;state.error='';state.stages=[];render();
- try{const q=state.rquery.trim();const r=await fetch('/api/research',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,useCase:state.context})});if(!r.ok){const d=await r.json();throw Error(d.error||'Research failed')}if(!r.body)throw Error('Streaming not supported');const reader=r.body.getReader(),decoder=new TextDecoder();let buf='',doneSuccessfully=false;while(!doneSuccessfully){const {value,done}=await reader.read();if(done)break;buf+=decoder.decode(value,{stream:true});const chunks=buf.split('\n\n');buf=chunks.pop()||'';for(const chunk of chunks){const type=chunk.match(/(?:^|\n)event: ([^\n]+)/)?.[1];const raw=chunk.match(/(?:^|\n)data: ([^\n]+)/)?.[1];if(!type||!raw)continue;let data;try{data=JSON.parse(raw)}catch{continue}if(type==='step'){state.stages.push(data.message);render()}else if(type==='error'){throw Error(data.error)}else if(type==='complete'){doneSuccessfully=true;await loadList();route('/guides/'+data.slug);break}}}if(!doneSuccessfully)throw Error('Research connection closed unexpectedly');}catch(err){state.error=err.message||String(err)}finally{state.working=false;render()}
+root.addEventListener('input', event => {
+  if (event.target.id === 'app-query') state.query = event.target.value;
+  if (event.target.id === 'guide-search') { state.search=event.target.value; render(); }
 });
+root.addEventListener('change', event => {
+  if (event.target.dataset.check !== undefined) { markStep(event.target.dataset.check,event.target.checked); render(); }
+  if (event.target.id === 'guide-goal') {
+    state.goalId = event.target.value;
+    state.preferences[state.guide.slug] = state.goalId;
+    persist('web2guide_goals',state.preferences);
+    const path = selectedPath(state.guide,state.goalId);
+    const done = completedSteps(path.steps,state.progress[state.guide.slug]);
+    state.openStep = path.steps.find(step => !done.includes(step))?.key || path.steps[0]?.key || '';
+    render();
+  }
+});
+root.addEventListener('keydown', event => {
+  if (!state.sidebar) return;
+  if (event.key === 'Escape') { state.sidebar=false; render(); document.querySelector('.menu-toggle')?.focus(); }
+  if (event.key === 'Tab') {
+    const focusable=[...root.querySelectorAll('.sidebar a,.sidebar button')].filter(element=>element.getClientRects().length);
+    const first=focusable[0], last=focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+});
+function existingGuide(query) {
+  const needle = query.toLowerCase().trim().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/$/,'');
+  return state.guides.find(guide => {
+    let hostname = ''; try { hostname = new URL(guide.website).hostname.replace(/^www\./,''); } catch {}
+    return [guide.name.toLowerCase(),guide.slug,hostname,...(guide.aliases || [])].includes(needle);
+  });
+}
+function generationMessage(message) {
+  if (/structur|plan/i.test(message)) return 'Organizing your setup checklist…';
+  if (/citation|unknown|check/i.test(message)) return 'Checking sources and approval requirements…';
+  return 'Reading the provider’s documentation…';
+}
+async function generate() {
+  if (state.working) return;
+  state.error = validateQuery(state.query);
+  if (state.error) { render(); document.querySelector('#app-query')?.focus(); return; }
+  const query = state.query.trim();
+  state.working = true; state.activity = 'Finding the right guide…'; render();
+  let controller;
+  let timeout;
+  try {
+    if (state.listStatus !== 'ready') await loadList();
+    const existing = existingGuide(query);
+    if (existing) { route('/guides/'+encodeURIComponent(existing.slug)); return; }
+    if (state.enabled === false) throw Error('unavailable');
+    controller = new AbortController();
+    timeout = setTimeout(()=>controller.abort(),150000);
+    const response = await fetch('/api/research',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query}),signal:controller.signal});
+    if (!response.ok) throw Error(response.status===429 ? 'limit' : response.status===400 ? 'invalid' : 'generation');
+    if (!response.body) throw Error('connection');
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    let buffer='', complete=false;
+    while (!complete) {
+      const {value,done}=await reader.read();
+      if (done) break;
+      buffer+=decoder.decode(value,{stream:true});
+      const chunks=buffer.replace(/\r\n/g,'\n').split('\n\n'); buffer=chunks.pop() || '';
+      for (const chunk of chunks) {
+        const type=chunk.match(/(?:^|\n)event: ([^\n]+)/)?.[1];
+        const raw=chunk.match(/(?:^|\n)data: ([^\n]+)/)?.[1];
+        if (!type || !raw) continue;
+        let data; try {data=JSON.parse(raw);}catch{continue;}
+        if (type==='step') { state.activity=generationMessage(data.message); render(); }
+        if (type==='error') throw Error('generation');
+        if (type==='complete' && typeof data.slug==='string' && data.slug) {
+          complete=true; await reader.cancel(); await loadList(); route('/guides/'+encodeURIComponent(data.slug)); break;
+        }
+      }
+    }
+    if (!complete) throw Error('connection');
+  } catch (error) {
+    state.error = ({unavailable:'New guide generation is currently unavailable. Try a saved app or browse generated guides.',limit:'You’ve reached the generation limit. Try again in an hour, or open a saved guide.',invalid:'We couldn’t recognize that app. Enter an app name or a full website URL.'})[error.message] || (error.name==='AbortError' ? 'Generation took too long. Please try again.' : 'We couldn’t generate this guide. Check the app name and try again. Saved guides are still available.');
+  } finally {clearTimeout(timeout); state.working=false; render();}
+}
+root.addEventListener('submit',event=>{if(event.target.id==='generate-form'){event.preventDefault();generate();}});
 window.addEventListener('popstate',resolve);
-resolve();Promise.all([loadList(),fetch('/api/health').then(r=>r.json()).then(x=>{state.enabled=x.researchEnabled;render()}).catch(()=>{state.enabled=false;render()})]);
+window.matchMedia('(max-width: 760px)').addEventListener('change',event=>{if(!event.matches && state.sidebar){state.sidebar=false;render();}});
+resolve();
+loadList();
+fetch('/api/health').then(response=>response.ok?response.json():Promise.reject()).then(health=>{state.enabled=health.researchEnabled;render();}).catch(()=>{state.enabled=null;});
