@@ -81,7 +81,7 @@ test('every guide shows a setup time, a wait, and a library time bucket',()=>{
   const bare=guideModel({name:'Bare',approvalStatus:'Required',steps:[{title:'Submit for review'}]});
   assert.equal(bare.difficulty,'Advanced');assert.equal(bare.timeEstimate,'4.5 hours');assert.equal(waitEstimate(bare,selectedPath(bare)),'4 weeks');
   assert.deepEqual(guides.map(guide=>timeBucket(summaryPath(guideSummary(guide)).timeEstimate)),['hours','long','long','hours']);
-  assert.deepEqual(['30–90 min','1 h 45 min','0–5 days','Weeks'].map(exactTime),['1 hour','1.8 hours','3 days','2 weeks']);
+  assert.deepEqual(['30–90 min','1 h 45 min','0–5 days','Weeks','1 h 10 min'].map(exactTime),['1 hour','2 hours','3 days','2 weeks','1 hour']);
   const generated=normalizeGuide({name:'X',reviewEstimate:'3–5 days',steps:[{title:'Go'}]},'X');
   assert.equal(generated.reviewEstimate,'3–5 days');
 });
@@ -124,7 +124,7 @@ test('setup time and difficulty change with the use case',()=>{
   const slack=guideModel(guides.find(guide=>guide.slug==='slack'));
   const own=selectedPath(slack,'own'),publicPath=selectedPath(slack,'public');
   assert.equal(own.difficulty,'Moderate');assert.equal(publicPath.difficulty,'Advanced');
-  assert.equal(own.timeEstimate,'3.3 hours');assert.equal(publicPath.timeEstimate,'4.5 hours'); // the 2-week review step counts as wait, not setup
+  assert.equal(own.timeEstimate,'3.5 hours');assert.equal(publicPath.timeEstimate,'4.5 hours'); // the 2-week review step counts as wait, not setup
   const generated=normalizeGuide({name:'X',goals:[{id:'a',label:'A',difficulty:'Easy'},{id:'b',label:'B',difficulty:'Wild'}],steps:[{title:'Go'}]},'X');
   assert.deepEqual(generated.goals.map(goal=>goal.difficulty),['Easy','']);
 });

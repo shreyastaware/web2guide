@@ -42,7 +42,7 @@ export function exactTime(value) {
   if (unit === 'day' || unit === 'week') { const count = Math.max(1, Math.round(amount)); return `${count} ${unit}${count === 1 ? '' : 's'}`; }
   const minutes = Math.max(5, Math.round((unit === 'h' ? amount * 60 : amount) / 5) * 5);
   if (minutes < 60) return `${minutes} min`;
-  const hours = Math.round(minutes / 6) / 10;
+  const hours = Math.round(minutes / 30) / 2; // Half-hour steps read naturally: 1.5 hours, not 1.3.
   return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
 export const TIME_BUCKETS = [{id: 'quick', label: '⚡ Under 1 h'}, {id: 'hours', label: '🕐 1–3 h'}, {id: 'long', label: '🐢 3 h+'}];
