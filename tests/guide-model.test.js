@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {guideModel, selectedPath, completedSteps, validateQuery, STAGES, waitEstimate, summaryTime, timeBucket} from '../public/guide-model.js';
+import {guideModel, selectedPath, completedSteps, validateQuery, STAGES, waitEstimate, summaryTime, timeBucket, exactTime} from '../public/guide-model.js';
 import {normalizeGuide} from '../server/research.js';
 const guides=JSON.parse(fs.readFileSync(new URL('../data/guides.json',import.meta.url),'utf8'));
 
@@ -11,7 +11,7 @@ test('old saved guides render without fabricated approval, durations, or verific
   assert.equal(old.steps[0].stage,'Create');assert.deepEqual(old.steps[0].instructions,['Enter the app name.']);
   assert.match(old.steps[0].verify,/does not specify/);
   assert.equal(completedSteps(old.steps,[0]).length,1);
-  assert.equal(old.effortEstimate,'2 hours');assert.equal(old.timeEstimate,'2 hours');assert.equal(old.steps[0].owner,'You');assert.equal(old.steps[0].time,'10–20 min');assert.deepEqual(old.agentCan,[]);
+  assert.equal(old.effortEstimate,'2 hours');assert.equal(old.timeEstimate,'2 h');assert.equal(old.steps[0].owner,'You');assert.equal(old.steps[0].time,'15 min');assert.deepEqual(old.agentCan,[]);
 });
 
 test('effort estimates, step owners, and agent handoff are exposed without inventing review waits',()=>{
@@ -22,7 +22,7 @@ test('effort estimates, step owners, and agent handoff are exposed without inven
     assert.equal(guide.reviewWait,'Unknown');
   }
   const long=guideModel({name:'Long',effort:'Register an app, choose scopes, implement the flow, then test it on production endpoints.',steps:[{title:'Wait',time:'Unknown',owner:'Robot'}]});
-  assert.equal(long.effortEstimate,'');assert.equal(long.timeEstimate,'1–4 h');assert.equal(long.steps[0].time,'10–20 min');assert.equal(long.steps[0].owner,'You');
+  assert.equal(long.effortEstimate,'');assert.equal(long.timeEstimate,'2 h 30 min');assert.equal(long.steps[0].time,'15 min');assert.equal(long.steps[0].owner,'You');
 });
 
 test('curated guides provide complete structured actions in stage order',()=>{
@@ -76,10 +76,11 @@ test('query validation handles app names, websites, and malformed URLs',()=>{
 test('every guide shows a setup time, a wait, and a library time bucket',()=>{
   const slack=guideModel(guides.find(guide=>guide.slug==='slack'));
   assert.equal(waitEstimate(slack,selectedPath(slack,'own')),'');
-  assert.equal(waitEstimate(slack,selectedPath(slack,'public')),'4–12 wks');
+  assert.equal(waitEstimate(slack,selectedPath(slack,'public')),'8 weeks');
   const bare=guideModel({name:'Bare',approvalStatus:'Required',steps:[{title:'Submit for review'}]});
-  assert.equal(bare.timeEstimate,'1–4 h');assert.equal(waitEstimate(bare,selectedPath(bare)),'1–4 wks');
+  assert.equal(bare.timeEstimate,'2 h 30 min');assert.equal(waitEstimate(bare,selectedPath(bare)),'3 weeks');
   assert.deepEqual(guides.map(guide=>timeBucket(summaryTime(guide))),['quick','long','hours','hours']);
+  assert.deepEqual(['30–90 min','1 h 45 min','0–5 days','Weeks'].map(exactTime),['1 h','1 h 45 min','3 days','2 weeks']);
   const generated=normalizeGuide({name:'X',reviewEstimate:'3–5 days',steps:[{title:'Go'}]},'X');
   assert.equal(generated.reviewEstimate,'3–5 days');
 });

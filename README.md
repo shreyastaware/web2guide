@@ -30,7 +30,7 @@ The key is never requested or exposed in the browser. Without it, saved guides r
 - Work through the numbered steps and tick each one off. Progress is saved in this browser only and doesn't verify anything on the provider side.
 - Copy the link to share, or export the guide as Markdown.
 
-Every guide shows a **setup time** and an **approval wait**, always marked as estimates (`~`, “est.”). A documented provider duration wins; otherwise the guide's effort estimate is used, then a typical range by difficulty or stage. The live research agent is required to return these estimates. Treat them as planning numbers, not provider commitments.
+Every guide shows a **setup time** and an **approval wait**, shown as one exact number and marked “est.” A documented provider duration wins; otherwise the guide's effort estimate is used, then a typical value by difficulty or stage. Ranges are collapsed to their midpoint (2–6 h → 4 h). The live research agent is required to return these estimates. Treat them as planning numbers, not provider commitments.
 
 Each guide is a short numbered list of steps. Every step shows who does it (🙋 You, 🤖 Agent, 🤝 Agent + you) and roughly how long it takes. Open a step to see the actions, values to copy, a “Done when” check, a link to the right dashboard, and a 😵 Stuck? toggle for blockers. Troubleshooting and sources sit at the bottom, collapsed.
 
