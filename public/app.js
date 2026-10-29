@@ -20,7 +20,7 @@ const icons = {
   check: '<path d="m5 12 4 4L19 6"/>', chevron: '<path d="m9 5 7 7-7 7"/>', down: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m14 6-6 6 6 6"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>', close: '<path d="m6 6 12 12M18 6 6 18"/>', search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
   copy: '<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h4"/>',
-  download: '<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/>',
+  trash: '<path d="M4 7h16M10 11v6m4-6v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>', download: '<path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18"/>',
 };
 const icon = (name, size = 18) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.info}</svg>`;
@@ -158,7 +158,7 @@ function guidePage(guide) {
   const wait = waitEstimate(guide, path);
   const needs = guide.requirements.filter(item => !item.goalIds?.length || !path.goal || item.goalIds.includes(path.goal.id)).slice(0,3);
   return `<div class="guide-content">
-    <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-agent">🤖 Copy for agent</button><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button></div></div>
+    <div class="guide-topline"><a href="/guides" data-route="/guides" class="back-link">${icon('left',15)} All guides</a><div class="guide-tools"><button class="text-button" data-action="copy-agent">🤖 Copy for agent</button><button class="text-button" data-action="copy-link">${icon('copy',15)} Copy link</button><button class="text-button" data-action="export">${icon('download',15)} Export</button>${guide.deletable ? `<button class="text-button danger" data-action="delete-guide">${icon('trash',15)} Delete</button>` : ''}</div></div>
     <header class="guide-heading"><div class="guide-title">${providerIcon(guide)}<h1 tabindex="-1">${esc(guide.name)}</h1></div><p class="guide-description">${esc(guide.description)}</p></header>
     ${guide.goals.length > 1 ? `<div class="goal-question"><label for="guide-goal">🎯 I want to</label><select id="guide-goal">${guide.goals.map(goal => `<option value="${esc(goal.id)}" ${goal.id === path.goal?.id ? 'selected' : ''}>${esc(goal.label)}</option>`).join('')}</select></div>` : ''}
     <dl class="stats">
@@ -259,6 +259,15 @@ root.addEventListener('click', async event => {
     case 'clear-search': state.search = ''; state.filters = {time: '', difficulty: '', approval: ''}; render(); document.querySelector('#guide-search')?.focus(); break;
     case 'copy-link': await copyText(location.href); break;
     case 'copy-agent': await copyText(`You're my coding agent. Below is my ${state.guide.name} OAuth setup guide. Do every step marked Agent or Agent + you, in order. For steps marked You, stop and tell me what to do, then wait for me. ${AGENT_RULES}\n\n${markdown(state.guide)}`); break;
+    case 'delete-guide': {
+      if (!confirm(`Delete the ${state.guide.name} guide? This can’t be undone.`)) break;
+      const name = state.guide.name;
+      try {
+        const response = await fetch('/api/guides/' + encodeURIComponent(state.guide.slug), {method: 'DELETE'});
+        if (!response.ok && response.status !== 404) throw Error();
+      } catch { toast('Couldn’t delete this guide. Try again.'); break; }
+      route('/guides'); await loadList(); toast(`${name} guide deleted`); break;
+    }
     case 'export': {
       const url = URL.createObjectURL(new Blob([markdown(state.guide)],{type:'text/markdown;charset=utf-8'}));
       const anchor = document.createElement('a'); anchor.href=url; anchor.download=state.guide.slug+'-oauth-guide.md'; anchor.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); break;
@@ -294,7 +303,9 @@ function existingGuide(query) {
   const needle = query.toLowerCase().trim().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/$/,'');
   return state.guides.find(guide => {
     let hostname = ''; try { hostname = new URL(guide.website).hostname.replace(/^www\./,''); } catch {}
-    return [guide.name.toLowerCase(),guide.slug,hostname,...(guide.aliases || [])].includes(needle);
+    // "Asana (OAuth 2.0)" and asana.com should both match a plain "asana".
+    const name = guide.name.toLowerCase(), bareName = name.replace(/\s*\(.*\)\s*$/,'');
+    return [name,bareName,guide.slug,hostname,hostname.split('.').at(-2),...(guide.aliases || [])].filter(Boolean).includes(needle);
   });
 }
 function generationMessage(message) {

@@ -128,6 +128,7 @@ input:disabled { color: var(--muted); }
 .secondary:hover { border-color: var(--muted); background: var(--sunken); }
 .text-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 10px; border-radius: 6px; color: var(--body); font-size: 13px; font-weight: 500; }
 .text-button:hover { color: var(--ink); background: var(--sunken); text-decoration: none; }
+.text-button.danger:hover { color: var(--amber); background: var(--amber-soft); }
 .page-description { max-width: 620px; margin-top: 18px; color: var(--body); font-size: 16px; line-height: 1.75; }
 .muted { color: var(--muted); font-size: 13px; }
 

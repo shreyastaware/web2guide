@@ -7,6 +7,7 @@ Write like a sharp dev on X: short, punchy, plain words, no filler. Step titles 
 
 const SYSTEM = `You are an expert OAuth provider-integration researcher and launch readiness analyst. The user is building an AI agent and wants users to connect the named provider (bring-your-own OAuth app). Investigate CURRENT FIRST-PARTY OFFICIAL provider developer documentation using web search. Research: registration, OAuth/PKCE and redirects, scope constraints, public/third-party installation, separate marketplace listing, review prerequisites, security and privacy requirements, fees and approval time only if published, hidden constraints and blocker handling. Distinguish provider-controlled approval from customer workspace-admin approval. Distinguish development, unlisted distribution, production, and marketplace; do not claim marketplace listing is needed just for using OAuth without evidence. Prefer official sources; if only secondary source exists, label it. Every time claim needs a first-party source. Keep setupTime and reviewWait Unknown unless documented, but always fill effort, step time, and reviewEstimate with your best estimate. Agent cannot log in as a developer or accept terms, register with external provider, obtain secrets, submit forms or approvals; be explicit. Do NOT generate or solicit credentials. Cite sources in JSON fields. Identify what is tested vs inferred: research is documentation-only; no real provider console sign-in or submission was performed. Avoid hallucination and return unknown when necessary. ${SCHEMA}`;
 
+export const queryHash = query => createHash('sha1').update(query.toLowerCase().trim()).digest('hex').slice(0,6);
 export function slugify(s) { const base = s.toLowerCase().replace(/^https?:\/\//,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,46); return base || 'integration'; }
 export function validInput(text) { return typeof text === 'string' && !validateQuery(text); }
 export function safeUrl(input) { try { const u = new URL(input); return u.protocol === 'https:' && !u.username && !u.password && !(/^(localhost|\d+\.\d+\.\d+\.\d+|.*\.local|.*\.internal)$/i.test(u.hostname)); } catch { return false; } }
@@ -23,7 +24,7 @@ export function normalizeGuide(raw, query) {
   const goalIds = value => arr(value,3).filter(id=>goals.some(goal=>goal.id===id));
   const blockers = values => arr(values,7).map(x=>({problem:clean(x.problem),solution:clean(x.solution),goalIds:goalIds(x.goalIds)}));
   const guide = {
-    slug:`${slugify(clean(raw.name)||query)}-${createHash('sha1').update(query.toLowerCase().trim()).digest('hex').slice(0,6)}`,
+    slug:`${slugify(clean(raw.name)||query)}-${queryHash(query)}`,
     name:clean(raw.name)||query,category:clean(raw.category)||'Integration',website:safeUrl(raw.website)?raw.website:'',icon:(clean(raw.name)||query).slice(0,2).toUpperCase(),tone:'#245b48',
     aliases:arr(raw.aliases,5).map(clean).map(s=>s.toLowerCase()),description:clean(raw.description),
     difficulty:['Easy','Moderate','Advanced'].includes(raw.difficulty)?raw.difficulty:'',approvalReason:clean(raw.approvalReason).split(/\s+/).slice(0,2).join(' '),

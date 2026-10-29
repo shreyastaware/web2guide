@@ -40,6 +40,14 @@ test('end-to-end: unfamiliar app gets researched, persisted, and served at a sha
   const list=await (await fetch(`http://127.0.0.1:${port}/api/guides`)).json();
   assert.deepEqual(list.find(g=>g.slug==='google').goals.map(goal=>goal.approvalStatus),['Required','Not Required']);assert.equal(list.find(g=>g.slug==='github').timeEstimate,'2.5 hours');
   assert.equal(list.find(g=>g.slug==='github').description.includes('GitHub'),true);
+  assert.equal(g.deletable,true);assert.equal((await (await fetch(`http://127.0.0.1:${port}/api/guides/github`)).json()).deletable,false);
+  const again=await (await fetch(`http://127.0.0.1:${port}/api/research`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:'zinc tasks'})})).text();
+  assert.equal(JSON.parse(again.match(/event: complete\ndata: ([^\n]+)/)[1]).slug,slug);
+  assert.equal((await (await fetch(`http://127.0.0.1:${port}/api/guides`)).json()).filter(x=>x.name==='Zinc Tasks').length,1);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/guides/github`,{method:'DELETE'})).status,403);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/guides/${slug}`,{method:'DELETE'})).status,200);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/guides/${slug}`)).status,404);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/guides/${slug}`,{method:'DELETE'})).status,404);
  }finally{child.kill();mock.close();fs.rmSync(dir,{recursive:true,force:true})}
 });
 

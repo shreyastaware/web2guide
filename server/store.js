@@ -15,9 +15,16 @@ export function createStore(dataDir){
   save:async guide=>{
    const index=guides.findIndex(g=>g.slug===guide.slug);
    if(index>=0)guides[index]=guide;else guides.push(guide);
-   const tmp=file+'.tmp';fs.writeFileSync(tmp,JSON.stringify(guides,null,2));fs.renameSync(tmp,file);
+   write();
+  },
+  remove:async slug=>{
+   const before=guides.length;
+   guides=guides.filter(g=>g.slug!==slug);
+   if(guides.length===before)return false;
+   write();return true;
   },
  };
+ function write(){const tmp=file+'.tmp';fs.writeFileSync(tmp,JSON.stringify(guides,null,2));fs.renameSync(tmp,file);}
 }
 
 function blobStore(){
@@ -57,6 +64,13 @@ function blobStore(){
   async save(guide){
    const {put}=await sdk;
    await put(key(guide.slug),JSON.stringify(guide),{access:'public',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json'});
+  },
+  async remove(slug){
+   const {head,del,BlobNotFoundError}=await sdk;
+   let blob;
+   try{blob=await head(key(slug));}catch(e){if(e instanceof BlobNotFoundError)return false;throw e;}
+   await del(blob.url);cache.delete(blob.pathname);
+   return true;
   },
  };
 }
